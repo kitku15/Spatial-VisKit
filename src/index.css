@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background-color: #efaed9; /* Light gray background like your PDF */
+}
+
+.vitessce-container {
+  height: 100% !important;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
