@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Vitessce } from 'vitessce';
+import { API_BASE_URL, ZARR_DIR, EXTRA_OBS_SETS, SPATIAL_KEY, ANNOTATION_PREFIX, VITESSCE_DOT_SIZE } from './config';
 
-const baseUrl = "http://192.168.0.165:9001";
 
 export default function VitessceViewer({ n, r }) {
   const [selectedSlide, setSelectedSlide] = useState("All");
@@ -17,7 +17,7 @@ export default function VitessceViewer({ n, r }) {
     async function fetchMetadata() {
       try {
         // We will generate this JSON file in Python (see instructions below)
-        const res = await fetch(`${baseUrl}/spatial_metadata.json`);
+        const res = await fetch(`${API_BASE_URL}/spatial_metadata.json`);
         if (!res.ok) throw new Error("Metadata JSON not found");
         const data = await res.json();
         
@@ -51,14 +51,14 @@ export default function VitessceViewer({ n, r }) {
   };
 
   const config = useMemo(() => {
-    let spatialEmbeddingKey = "obsm/global";
+    let spatialEmbeddingKey = `obsm/${SPATIAL_KEY}`;
     
     // FIX: If a sample is selected, we ONLY need the sample name. 
     // We don't need to combine it with the slide name!
     if (selectedSample !== "All") {
-      spatialEmbeddingKey = `obsm/global_${selectedSample}`;
+      spatialEmbeddingKey = `obsm/${SPATIAL_KEY}_${selectedSample}`;
     } else if (selectedSlide !== "All") {
-      spatialEmbeddingKey = `obsm/global_${selectedSlide}`;
+      spatialEmbeddingKey = `obsm/${SPATIAL_KEY}_${selectedSlide}`;
     }
 
     return {
@@ -71,7 +71,7 @@ export default function VitessceViewer({ n, r }) {
           files: [
             {
               fileType: "anndata-cells.zarr",
-              url: `${baseUrl}/adata_tyler.zarr/`,
+              url: `${API_BASE_URL}/${ZARR_DIR}/`,
               options: {
                 mappings: {
                   UMAP: {
@@ -87,18 +87,16 @@ export default function VitessceViewer({ n, r }) {
             },
             {
               fileType: "obsSets.anndata.zarr",
-              url: `${baseUrl}/adata_tyler.zarr/`,
+              url: `${API_BASE_URL}/${ZARR_DIR}/`,
               options: [
                 { name: "Cell Clusters", path: `obs/leiden_n${n}_r${r}` },
                 { name: "CellTypist (Majority Voting)", path: `obs/CellTypist_majorityvoting_leiden_n${n}_r${r}` },
-                { name: "FOV", path: `obs/fov` },
-                { name: "Disease Type", path: `obs/DiseaseType` },
-                { name: "Treatment Response", path: `obs/TreatmentResponse` }
+                ...EXTRA_OBS_SETS
               ]
             },
             {
               fileType: "obsFeatureMatrix.anndata.zarr",
-              url: `${baseUrl}/adata_tyler.zarr/`,
+              url: `${API_BASE_URL}/${ZARR_DIR}/`,
               options: { path: "X" }
             }
           ]
@@ -107,7 +105,7 @@ export default function VitessceViewer({ n, r }) {
       coordinationSpace: {
         embeddingType: { ET1: "UMAP", ET2: "spatial_view" },
         embeddingObsRadiusMode: { RM1: "manual" },
-        embeddingObsRadius: { R1: 2.0, R2: 2.0 }
+        embeddingObsRadius: { R1: VITESSCE_DOT_SIZE, R2: VITESSCE_DOT_SIZE  }
       },
       layout: [
         {

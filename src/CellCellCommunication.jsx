@@ -1,8 +1,9 @@
 // ./CellCellCommunication.jsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
+import VitessceCCC from './VitessceCCC';
 
-export default function CellCellCommunication() {
+export default function CellCellCommunication({ n, r }) {
   const [rawData, setRawData] = useState([]);
   const [microenvsDict, setMicroenvsDict] = useState({}); 
   const [globalCellCounts, setGlobalCellCounts] = useState({}); 
@@ -24,6 +25,9 @@ export default function CellCellCommunication() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef(null);
+
+  // Color State
+  const [cellColorMap, setCellColorMap] = useState([]);
   
   // D3 ref
   const d3Container = useRef(null);
@@ -64,13 +68,11 @@ export default function CellCellCommunication() {
         setAvailableInteractions(interactions);
         setSelectedInteractions(interactions); 
         
-        // --- NEW: Pick a random Microenvironment and Cell Type on load! ---
+        // Pick a random Microenvironment and Cell Type on load!
         if (microenvs.length > 0) {
-          // 1. Pick a random Region
           const randomEnv = microenvs[Math.floor(Math.random() * microenvs.length)];
           setSelectedMicroenv(randomEnv);
           
-          // 2. Pick a random Cell Type that actually exists in that Region
           const cellsInEnv = Object.keys(microData[randomEnv] || {});
           if (cellsInEnv.length > 0) {
             const randomCell = cellsInEnv[Math.floor(Math.random() * cellsInEnv.length)];
@@ -130,7 +132,7 @@ export default function CellCellCommunication() {
     setPlotData(Array.from(edgeMap.values()));
   };
 
-  // Run initial filter (now uses the random selections!)
+  // Run initial filter
   useEffect(() => {
     if (rawData.length > 0) handleRefresh();
   }, [rawData]);
@@ -143,20 +145,29 @@ export default function CellCellCommunication() {
     container.selectAll("*").remove();
 
     if (plotData.length === 0) {
-      container.append("text")
-        .attr("x", "50%")
-        .attr("y", "50%")
-        .attr("text-anchor", "middle")
+      container.append("div")
+        .attr("class", "flex h-full items-center justify-center text-gray-500 text-sm")
         .text("No significant interactions found for current filters.");
       return;
     }
 
     const width = 600;
     const height = 600;
-    const innerRadius = Math.min(width, height) * 0.5 - 120;
-    const outerRadius = innerRadius + 10;
+    
+    const innerRadius = Math.min(width, height) * 0.5 - 30;
+    const outerRadius = innerRadius + 15;
 
     const names = Array.from(new Set(plotData.flatMap(d => [d.source, d.target]))).sort();
+
+    const d3Colors = d3.schemeCategory10;
+    const currentColors = names.map((name, i) => ({
+      name: name,
+      color: d3Colors[i % d3Colors.length]
+    }));
+    
+    // Wrap in timeout to prevent React "update during render" warnings from D3 layout
+    setTimeout(() => setCellColorMap(currentColors), 0); 
+
     const index = new Map(names.map((name, i) => [name, i]));
     const matrix = Array.from(index, () => new Array(names.length).fill(0));
     
@@ -218,15 +229,7 @@ export default function CellCellCommunication() {
         .attr("width", "100%")
         .attr("height", "100%")
         .attr("viewBox", [-width / 2, -height / 2, width, height])
-        // REVERTED SVG SIZING: Back to 60% so it is smaller and centered!
-        .attr("style", "max-width: 60%; height: auto; font: 10px sans-serif;");
-
-    const textId = `text-path-${Math.random().toString(36).substring(2, 9)}`;
-
-    svg.append("path")
-        .attr("id", textId)
-        .attr("fill", "none")
-        .attr("d", d3.arc()({outerRadius, startAngle: 0, endAngle: 2 * Math.PI}));
+        .attr("style", "max-width: 100%; max-height: 100%; margin: auto; display: block;");
 
     svg.append("g")
         .attr("fill-opacity", 0.8)
@@ -252,15 +255,10 @@ export default function CellCellCommunication() {
         .attr("fill", d => colors[d.index % colors.length])
         .attr("stroke", "#fff");
 
-    g.append("text")
-        .attr("dy", -3)
-      .append("textPath")
-        .attr("href", `#${textId}`)
-        .attr("startOffset", d => d.startAngle * outerRadius)
-        .text(d => names[d.index]);
-
     g.append("title")
         .text(d => `${names[d.index]}\nOutgoing: ${formatValue(d3.sum(matrix[d.index]))}\nIncoming: ${formatValue(d3.sum(matrix, row => row[d.index]))}`);
+
+    return () => container.selectAll("*").remove();
 
   }, [plotData, colorBy, interactionColorScale]); 
 
@@ -395,36 +393,66 @@ export default function CellCellCommunication() {
 
       {/* Plot Area */}
       <div className="bg-white p-4 border shadow-sm rounded flex-1 flex flex-col min-h-[600px] relative">
-        <h3 className="font-bold text-lg mb-2 text-center text-gray-700">Directed Interaction Network</h3>
+        <h3 className="font-bold text-lg mb-2 text-center text-gray-700">Directed Interaction Network & Spatial Context</h3>
         <p className="text-sm text-gray-500 text-center mb-4">Arrows indicate direction from Sender (Ligand) to Receiver (Receptor).</p>
         
-        <div className="flex-1 w-full flex overflow-hidden">
+        {/* SIDE-BY-SIDE SPLIT */}
+        <div className="flex-1 w-full flex gap-4 overflow-hidden">
           
-          {/* Main D3 Chart */}
-          <div className="flex-1 flex items-center justify-center min-w-0">
-            {/* REVERTED: Removed maxWidth limit so it uses the whole area to center */}
-            <div ref={d3Container} style={{ width: '100%', height: '100%' }}></div>
-          </div>
+          {/* Left: Main D3 Chart + Legend */}
+          <div className="flex-1 flex flex-col min-w-0 border border-gray-200 rounded relative bg-white overflow-hidden">
+            
+            {/* Top: Circle Plot Container */}
+            <div className="flex-1 relative flex items-center justify-center p-4 min-h-0 bg-white">
+              <div ref={d3Container} className="w-full h-full flex items-center justify-center"></div>
+              
+              {/* Conditional Interactions Overlay */}
+              {colorBy === "Interaction" && activeInteractions.length > 0 && (
+                <div className="absolute top-4 right-4 bg-white/90 p-2 rounded shadow border max-h-[80%] overflow-y-auto z-10">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Pairs</h4>
+                  <div className="flex flex-col gap-1">
+                    {activeInteractions.map(intx => (
+                      <div key={intx} className="flex items-center gap-2 text-xs text-gray-700">
+                        <span 
+                          className="w-3 h-3 rounded-full flex-shrink-0" 
+                          style={{ backgroundColor: interactionColorScale(intx) }}
+                        />
+                        <span className="truncate max-w-[120px]" title={intx}>{intx}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
-          {/* Conditional Legend Panel */}
-          {colorBy === "Interaction" && activeInteractions.length > 0 && (
-            <div className="w-64 flex flex-col border-l border-gray-200 pl-4 ml-4 overflow-y-auto max-h-full">
-              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 sticky top-0 bg-white py-1 shadow-sm">
-                Active Pairs
-              </h4>
-              <div className="flex flex-col gap-2 pb-4">
-                {activeInteractions.map(intx => (
-                  <div key={intx} className="flex items-center gap-2 text-sm text-gray-700">
+            {/* Bottom: Cell Type Legend */}
+            <div className="h-1/3 min-h-[120px] max-h-[200px] border-t border-gray-200 bg-gray-50 p-4 overflow-y-auto">
+              <h4 className="text-lg font-bold text-gray-500 uppercase tracking-wider mb-3">Participating Cell Types</h4>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {cellColorMap.map(c => (
+                  <div key={c.name} className="flex items-center gap-2 text-lg text-gray-800 bg-white px-2 py-1 rounded shadow-sm border border-gray-200">
                     <span 
-                      className="w-4 h-4 rounded shadow-sm flex-shrink-0" 
-                      style={{ backgroundColor: interactionColorScale(intx) }}
+                      className="w-3 h-3 rounded flex-shrink-0" 
+                      style={{ backgroundColor: c.color }}
                     />
-                    <span className="truncate" title={intx}>{intx}</span>
+                    <span className="font-medium">{c.name}</span>
                   </div>
                 ))}
               </div>
             </div>
-          )}
+
+          </div>
+
+          {/* Right: Vitessce Spatial Plot */}
+          <div className="flex-1 min-w-0 border border-gray-200 rounded">
+            <VitessceCCC 
+              n={n} 
+              r={r} 
+              selectedMicroenv={selectedMicroenv} 
+              cellColorMap={cellColorMap} 
+            />
+          </div>
+
         </div>
       </div>
     </div>
