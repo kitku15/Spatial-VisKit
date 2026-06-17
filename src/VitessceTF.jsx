@@ -75,7 +75,8 @@ export default function VitessceTF({ viewMode, selectedSlide, selectedSample, n,
   }, [viewMode, selectedSlide, selectedSample, n, minColorRange]);
 
   return (
-    <div className="w-full h-full relative">
+    // DYNAMICALLY APPLY 'flip-spatial-y' ONLY IF SPATIAL MODE IS ACTIVE
+    <div className={`w-full h-full relative ${viewMode === 'Spatial' ? 'flip-spatial-y' : ''}`}>
       <Vitessce
         key={`vitessce-tf-${viewMode}-${selectedSlide}-${selectedSample}-${n}`}
         config={config}

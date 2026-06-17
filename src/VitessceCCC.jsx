@@ -18,7 +18,7 @@ export default function VitessceCCC({ n, r, selectedMicroenv, cellColorMap }) {
       ? `obsm/${SPATIAL_KEY}` 
       : `obsm/spatial_microenv_${selectedMicroenv}`;
 
-    // 2. Identify the target AnnData column based on current N and R (Using config ANNOTATION_PREFIX)
+    // 2. Identify the target AnnData column based on current N and R
     const cellTypeName = "Cell Annotation";
     const cellTypePath = `obs/${ANNOTATION_PREFIX}_n${n}_r${r}`;
 
@@ -68,7 +68,7 @@ export default function VitessceCCC({ n, r, selectedMicroenv, cellColorMap }) {
         obsSetSelection: { OSS1: obsSetSelection.length > 0 ? obsSetSelection : null },
         embeddingObsRadiusMode: { RM1: "manual" },
         embeddingObsOpacityMode: { OM1: "manual" },
-        embeddingObsRadius: { ECR1: VITESSCE_DOT_SIZE },   // <--- Now uses config.js dot size
+        embeddingObsRadius: { ECR1: VITESSCE_DOT_SIZE },   
         embeddingObsOpacity: { ECO1: 1 }  
       },
       layout: [
@@ -90,7 +90,8 @@ export default function VitessceCCC({ n, r, selectedMicroenv, cellColorMap }) {
   }, [n, r, selectedMicroenv, cellColorMap]);
 
   return (
-    <div className="w-full h-full relative border border-gray-200 rounded overflow-hidden shadow-inner bg-gray-50">
+    // ADDED 'flip-spatial-y' CLASS HERE
+    <div className="w-full h-full relative border border-gray-200 rounded overflow-hidden shadow-inner bg-gray-50 flip-spatial-y">
       <Vitessce config={config} theme="light" />
     </div>
   );
