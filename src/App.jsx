@@ -7,7 +7,7 @@ import CellCellCommunication from './CellCellCommunication';
 import TranscriptionFactor from './TranscriptionFactor';
 import SpatialStats from './SpatialStats';
 import QualityControl from './QualityControl';
-
+import MultiplexGeneOverlay from './MultiplexGeneOverlay';
 
 // --- MAIN LAYOUT COMPONENT ---
 // We now pass our state and functions into the layout as props
@@ -27,6 +27,7 @@ const Layout = ({ children, availableN, availableR, selectedN, setSelectedN, sel
       <nav className="flex border-b border-gray-400 bg-white shadow-sm">
         <NavLink to="/qc" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Quality Control</NavLink>
         <NavLink to="/interactive" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Interactive Explorer (Vitessce)</NavLink>
+        <NavLink to="/multiplex" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Multiplex Overlay</NavLink> 
         <NavLink to="/stats" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Spatial Stats</NavLink>
         <NavLink to="/tf" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Transcription Factor Analysis</NavLink>
         <NavLink to="/ccc" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Cell Cell Communication</NavLink>
@@ -180,21 +181,11 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/qc" />} />
           <Route path="/qc" element={<QualityControl />} />
-          
-          {/* Only render Vitessce once we have detected the available columns */}
           <Route path="/interactive" element={isReady ? <VitessceViewer n={appliedN} r={appliedR} /> : <div className="p-6">Loading data from Zarr...</div>} />
-          
+          <Route path="/multiplex" element={<MultiplexGeneOverlay />} />
           <Route path="/stats" element={<SpatialStats />} />
-
-          <Route 
-            path="/tf" 
-            element={isReady ? <TranscriptionFactor n={appliedN} r={appliedR} /> : <div className="p-6">Loading data from Zarr...</div>} 
-          />
-          <Route 
-            path="/ccc" 
-            element={isReady ? <CellCellCommunication n={appliedN} r={appliedR} /> : <div className="p-6">Loading data from Zarr...</div>} 
-          />
-
+          <Route path="/tf" element={isReady ? <TranscriptionFactor n={appliedN} r={appliedR} /> : <div className="p-6">Loading data from Zarr...</div>} />
+          <Route path="/ccc" element={isReady ? <CellCellCommunication n={appliedN} r={appliedR} /> : <div className="p-6">Loading data from Zarr...</div>} />
           <Route path="/annotation" element={<CellTypeAnnotation availableColumns={allColumns} />} />
         </Routes>
       </Layout>
