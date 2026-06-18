@@ -8,11 +8,13 @@ import TranscriptionFactor from './TranscriptionFactor';
 import SpatialStats from './SpatialStats';
 import QualityControl from './QualityControl';
 import MultiplexGeneOverlay from './MultiplexGeneOverlay';
+import DEAnalysis from './DEAnalysis';
+
 
 // --- MAIN LAYOUT COMPONENT ---
 // We now pass our state and functions into the layout as props
 // Add availableN and availableR to the incoming props
-const Layout = ({ children, availableN, availableR, selectedN, setSelectedN, selectedR, setSelectedR, handleRefresh }) => {
+const Layout = ({ children, availableN, availableR, selectedN, setSelectedN, selectedR, setSelectedR, handleRefresh, sidebarOpen, setSidebarOpen }) => {
   const activeClass = "bg-gray-500 text-white font-semibold px-4 py-3";
   const inactiveClass = "bg-white text-black font-semibold px-4 py-3 border-r border-gray-300 hover:bg-gray-100";
 
@@ -21,7 +23,12 @@ const Layout = ({ children, availableN, availableR, selectedN, setSelectedN, sel
       {/* ... (keep your header and nav the same as before) ... */}
       <header className="bg-gray-400 text-3xl p-4 flex justify-between items-center text-white font-semibold">
         <span>{PROJECT_TITLE}</span>
-        <span className="text-xl cursor-pointer">⚙️</span>
+        <span
+          className="text-xl cursor-pointer"
+          onClick={() => setSidebarOpen(prev => !prev)}
+        >
+          {sidebarOpen ? "⬅️" : "➡️"}
+        </span>
       </header>
 
       <nav className="flex border-b border-gray-400 bg-white shadow-sm">
@@ -32,10 +39,15 @@ const Layout = ({ children, availableN, availableR, selectedN, setSelectedN, sel
         <NavLink to="/tf" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Transcription Factor Analysis</NavLink>
         <NavLink to="/ccc" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Cell Cell Communication</NavLink>
         <NavLink to="/annotation" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Cell Type Annotation</NavLink>
+        <NavLink to="/de-analysis" className={({ isActive }) => isActive ? activeClass : inactiveClass}>DE Analysis</NavLink>
       </nav>
 
       <main className="flex-1 overflow-auto flex">
-        <aside className="w-64 bg-gray-300 border-r border-gray-400 flex flex-col">
+        <aside
+          className={`bg-gray-300 border-r border-gray-400 flex flex-col transition-all duration-200 ${
+            sidebarOpen ? "w-64" : "w-0 overflow-hidden"
+          }`}
+        >
           <div className="p-4 border-b border-gray-400 flex justify-center gap-2">
             <button onClick={handleRefresh} className="bg-green-200 border border-black px-4 py-1 text-sm font-semibold rounded shadow-sm hover:bg-green-300">Refresh plot</button>
             <button className="bg-red-200 border border-black px-4 py-1 text-sm font-semibold rounded shadow-sm hover:bg-red-300">Clear Filters</button>
@@ -113,6 +125,8 @@ export default function App() {
   // 4. For Cell Type Annotation page
   const [allColumns, setAllColumns] = useState([]);
 
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   // 4. Read the Zarr file on load to detect what's available!
   useEffect(() => {
     async function fetchZarrMetadata() {
@@ -176,7 +190,8 @@ export default function App() {
         availableN={availableN} availableR={availableR}
         selectedN={selectedN} setSelectedN={setSelectedN}
         selectedR={selectedR} setSelectedR={setSelectedR}
-        handleRefresh={handleRefresh}
+        handleRefresh={handleRefresh} sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
       >
         <Routes>
           <Route path="/" element={<Navigate to="/qc" />} />
@@ -187,6 +202,7 @@ export default function App() {
           <Route path="/tf" element={isReady ? <TranscriptionFactor n={appliedN} r={appliedR} /> : <div className="p-6">Loading data from Zarr...</div>} />
           <Route path="/ccc" element={isReady ? <CellCellCommunication n={appliedN} r={appliedR} /> : <div className="p-6">Loading data from Zarr...</div>} />
           <Route path="/annotation" element={<CellTypeAnnotation availableColumns={allColumns} />} />
+          <Route path="/de-analysis" element={<DEAnalysis />} />
         </Routes>
       </Layout>
     </Router>
