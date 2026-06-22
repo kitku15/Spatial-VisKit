@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
 import * as d3 from 'd3';
+import { ANALYSIS_NAME } from './config';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -45,13 +46,13 @@ export default function SpatialStats() {
   useEffect(() => {
     async function fetchMetadata() {
       try {
-        const res = await fetch('data/spatial_metadata.json');
+        const res = await fetch(`data/spatial_metadata_${ANALYSIS_NAME}.json`);
         if (!res.ok) return;
         const data = await res.json();
         setHierarchy(data);
         setAvailableSlides(["All", ...Object.keys(data)]);
       } catch (err) {
-        console.warn("Could not load spatial_metadata.json", err);
+        console.warn(`Could not load spatial_metadata_${ANALYSIS_NAME}.json`, err);
       }
     }
     fetchMetadata();
@@ -253,12 +254,10 @@ export default function SpatialStats() {
     if (!centralityData && !moranData) return <div className="p-4 text-gray-500">Loading or no Autocorrelation/Centrality data found.</div>;
 
     const centralityTraces = centralityData ? Object.keys(centralityData).map((cluster, index) => ({
-      x: ['Degree', 'Closeness', 'Betweenness', 'Clustering Coef'],
+      x: ['Degree', 'Closeness'],
       y: [
         centralityData[cluster]['degree_centrality'],
         centralityData[cluster]['closeness_centrality'],
-        centralityData[cluster]['betweenness_centrality'],
-        centralityData[cluster]['clustering_coefficient']
       ],
       name: `Cluster ${cluster}`,
       type: 'bar',

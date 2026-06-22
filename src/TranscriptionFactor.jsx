@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
 import VitessceTF from './VitessceTF';
-import { API_BASE_URL } from './config';
+import { API_BASE_URL, ANALYSIS_NAME } from './config';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -30,7 +30,7 @@ export default function TranscriptionFactor({ n, r }) {
   useEffect(() => {
     async function fetchMetadata() {
       try {
-        const res = await fetch(`${API_BASE_URL}/spatial_metadata.json`);
+        const res = await fetch(`${API_BASE_URL}/spatial_metadata_${ANALYSIS_NAME}.json`);
         if (!res.ok) return;
         const data = await res.json();
         setHierarchy(data);

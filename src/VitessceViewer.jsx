@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Vitessce } from 'vitessce';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
-import { API_BASE_URL, ZARR_DIR, EXTRA_OBS_SETS, SPATIAL_KEY, ANNOTATION_PREFIX, VITESSCE_DOT_SIZE } from './config';
+import { API_BASE_URL, ZARR_DIR, EXTRA_OBS_SETS, SPATIAL_KEY, ANNOTATION_PREFIX, VITESSCE_DOT_SIZE, ANALYSIS_NAME } from './config';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -27,6 +27,9 @@ export default function VitessceViewer({ n, r }) {
   const [selectedSample, setSelectedSample] = useState("All");
   const [activeCategory, setActiveCategory] = useState("Cell Clusters");
 
+  // Toggle View Mode: "points" or "segmentations"
+  const [spatialViewMode, setSpatialViewMode] = useState("segmentations"); 
+
   const [hierarchy, setHierarchy] = useState({});
   const [availableSlides, setAvailableSlides] = useState(["All"]);
   const [availableSamples, setAvailableSamples] = useState(["All"]);
@@ -38,7 +41,7 @@ export default function VitessceViewer({ n, r }) {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch(`${API_BASE_URL}/spatial_metadata.json`);
+        const res = await fetch(`${API_BASE_URL}/spatial_metadata_${ANALYSIS_NAME}.json`);
         if (res.ok) {
           const data = await res.json();
           setHierarchy(data);
@@ -122,8 +125,15 @@ export default function VitessceViewer({ n, r }) {
 
   const config = useMemo(() => {
     let spatialEmbeddingKey = `obsm/${SPATIAL_KEY}`;
-    if (selectedSample !== "All") spatialEmbeddingKey = `obsm/${SPATIAL_KEY}_${selectedSample}`;
-    else if (selectedSlide !== "All") spatialEmbeddingKey = `obsm/${SPATIAL_KEY}_${selectedSlide}`;
+    let segmentationsFile = "segmentations/segmentations.json"; 
+
+    if (selectedSample !== "All") {
+      spatialEmbeddingKey = `obsm/${SPATIAL_KEY}_${selectedSample}`;
+      segmentationsFile = `segmentations/segmentations_${selectedSample}.json`;
+    } else if (selectedSlide !== "All") {
+      spatialEmbeddingKey = `obsm/${SPATIAL_KEY}_${selectedSlide}`;
+      segmentationsFile = `segmentations/segmentations_${selectedSlide}.json`;
+    }
 
     const obsSetColor = Object.keys(colorMap).map(label => ({
       path: [activeCategory, label],
@@ -142,17 +152,16 @@ export default function VitessceViewer({ n, r }) {
     ].filter(Boolean);
 
     const coordinationSpace = {
-      embeddingType: { ET1: "UMAP" }, 
+      embeddingType: { ET_UMAP: "UMAP", ET_SPATIAL: "SPATIAL_VIEW" },
       embeddingObsRadiusMode: { RM1: "manual" },
       embeddingObsRadius: { R1: VITESSCE_DOT_SIZE },
       obsSetColor: { OSC1: obsSetColor },
       spatialZoom: { SZ1: -2 }, 
       spatialTargetX: { STX1: 0 },
       spatialTargetY: { STY1: 0 },
-      // ONE SINGLE LAYER FOR CELLS (Controls both Centroid dots and Polygon lines)
       spatialSegmentationLayer: {
         SSL1: {
-          opacity: 1,
+          opacity: 0.5,
           radius: 1,    
           visible: true,
           stroked: true,   
@@ -162,15 +171,16 @@ export default function VitessceViewer({ n, r }) {
     };
 
     const umapScopes = { 
-      embeddingType: "ET1", 
+      embeddingType: "ET_UMAP", 
       embeddingObsRadiusMode: "RM1", 
       embeddingObsRadius: "R1", 
       obsSetColor: "OSC1" 
     };
 
-    const spatialScopes = { 
-      spatialSegmentationLayer: "SSL1",
-      obsSetColor: "OSC1" 
+    const spatialScopes = { spatialSegmentationLayer: "SSL1", obsSetColor: "OSC1" };
+    
+    const pointSpatialScopes = {
+      embeddingType: "ET_SPATIAL", embeddingObsRadiusMode: "RM1", embeddingObsRadius: "R1", obsSetColor: "OSC1"
     };
     
     const obsSetsScopes = { obsSetColor: "OSC1" };
@@ -179,63 +189,85 @@ export default function VitessceViewer({ n, r }) {
       coordinationSpace.obsSetSelection = { OSS1: [[activeCategory, clickedSlice]] };
       umapScopes.obsSetSelection = "OSS1";
       spatialScopes.obsSetSelection = "OSS1";
+      pointSpatialScopes.obsSetSelection = "OSS1";
       obsSetsScopes.obsSetSelection = "OSS1";
+    }
+
+    const files = [
+      {
+        fileType: "anndata-cells.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`,
+        options: { 
+          mappings: { 
+            UMAP: { key: `obsm/X_umap_n${n}`, dims: [0, 1] },
+            SPATIAL_VIEW: { key: spatialEmbeddingKey, dims: [0, 1] } 
+          } 
+        },
+        coordinationValues: { obsType: "cell" }
+      },
+      {
+        fileType: "obsSets.anndata.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`,
+        options: sortedObsSets,
+        coordinationValues: { obsType: "cell" }
+      },
+      { 
+        fileType: "obsFeatureMatrix.anndata.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`, 
+        options: { path: "X" },
+        coordinationValues: { obsType: "cell" }
+      }
+    ];
+
+    if (spatialViewMode === "segmentations") {
+      files.push({
+        fileType: "obsLocations.anndata.zarr", 
+        url: `${API_BASE_URL}/${ZARR_DIR}/`,
+        options: { path: spatialEmbeddingKey },
+        coordinationValues: { obsType: "cell" }
+      });
+      files.push({
+        fileType: "obsSegmentations.json", 
+        url: `${API_BASE_URL}/${encodeURIComponent(segmentationsFile)}`,
+        coordinationValues: { obsType: "cell" }
+      });
     }
 
     return {
       version: "1.0.15",
       name: "Tyler Spatial View",
       initStrategy: "auto",
-      datasets: [{
-        uid: "my-dataset",
-        files: [
-          {
-            fileType: "anndata-cells.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`,
-            options: { mappings: { UMAP: { key: `obsm/X_umap_n${n}`, dims: [0, 1] } } },
-            coordinationValues: { obsType: "cell" }
-          },
-          {
-            // 1. The physical dots (Centroids)
-            fileType: "obsLocations.anndata.zarr", 
-            url: `${API_BASE_URL}/${ZARR_DIR}/`,
-            options: { path: spatialEmbeddingKey },
-            coordinationValues: { obsType: "cell" }
-          },
-          {
-            // 2. The physical polygons (Segmentations) 
-            // Vitessce merges this with the dots above automatically!
-            fileType: "obsSegmentations.json", 
-            url: `${API_BASE_URL}/segmentations.json`,
-            coordinationValues: { obsType: "cell" }
-          },
-          {
-            fileType: "obsSets.anndata.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`,
-            options: sortedObsSets,
-            coordinationValues: { obsType: "cell" }
-          },
-          { 
-            fileType: "obsFeatureMatrix.anndata.zarr", 
-            url: `${API_BASE_URL}/${ZARR_DIR}/`, 
-            options: { path: "X" },
-            coordinationValues: { obsType: "cell" }
-          }
-        ]
-      }],
+      datasets: [{ uid: "my-dataset", files: files }],
       coordinationSpace: coordinationSpace,
       layout: [
         { component: "scatterplot", coordinationScopes: umapScopes, x: 0, y: 0, w: 4, h: 12 },
-        { component: "spatial", coordinationScopes: spatialScopes, x: 4, y: 0, w: 4, h: 12 },
+        spatialViewMode === "segmentations" 
+          ? { component: "spatial", coordinationScopes: spatialScopes, x: 4, y: 0, w: 4, h: 12 }
+          : { component: "scatterplot", coordinationScopes: pointSpatialScopes, x: 4, y: 0, w: 4, h: 12 },
         { component: "layerController", coordinationScopes: spatialScopes, x: 8, y: 0, w: 4, h: 3 },
         { component: "obsSets", coordinationScopes: obsSetsScopes, x: 8, y: 3, w: 2, h: 4 },
         { component: "featureList", x: 10, y: 3, w: 2, h: 4 }
       ]
     };
-  }, [n, r, selectedSlide, selectedSample, clickedSlice, activeCategory, colorMap]);
+  }, [n, r, selectedSlide, selectedSample, clickedSlice, activeCategory, colorMap, spatialViewMode]);
 
   return (
     <div className="flex flex-col w-full h-full relative">
+      {/* Top Settings Bar */}
       <div className="bg-gray-200 border-b border-gray-400 px-4 py-2 flex gap-6 items-center z-10">
         <span className="font-bold text-sm text-gray-800 uppercase tracking-wide">Spatial Filters:</span>
+
+        <div className="flex bg-white rounded p-1 shadow-sm border border-gray-300">
+          <button 
+            className={`px-3 py-1 rounded text-xs font-bold transition ${spatialViewMode === 'points' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+            onClick={() => setSpatialViewMode('points')}
+          >
+            Points
+          </button>
+          <button 
+            className={`px-3 py-1 rounded text-xs font-bold transition ${spatialViewMode === 'segmentations' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+            onClick={() => setSpatialViewMode('segmentations')}
+          >
+            Polygons
+          </button>
+        </div>
         
         <label className="text-sm font-semibold flex items-center gap-2">
           Slide:
@@ -268,13 +300,16 @@ export default function VitessceViewer({ n, r }) {
         </label>
       </div>
 
-      <div className="flex-1 w-full min-h-0 relative">
+      {/* Main Plot Area */}
+      <div className={`flex-1 w-full min-h-0 relative ${spatialViewMode === 'points' ? 'flip-spatial-y' : ''}`}>
+        
         <Vitessce
-          key={`vitessce-${n}-${r}-${activeCategory}`}
+          key={`vitessce-${n}-${r}-${activeCategory}-${selectedSlide}-${selectedSample}-${spatialViewMode}`}
           config={config}
           theme="light"
         />
 
+        {/* PIE CHART OVERLAY */}
         <div className="absolute bottom-0 right-0 w-1/3 h-[40%] bg-white z-10 border-t border-l border-gray-300 p-3 flex flex-col shadow-[-4px_-4px_8px_-1px_rgba(0,0,0,0.05)]">
           <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
             <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">

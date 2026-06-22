@@ -1,172 +1,139 @@
 import React, { useState, useEffect } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
-import * as d3 from 'd3';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
 
 export default function QualityControl() {
-  const [qcData, setQcData] = useState(null);
+  const [histData, setHistData] = useState(null);
   const [thresholds, setThresholds] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch threshold JSON
-        const threshRes = await fetch('data/qc/qc_thresholds.json');
-        if (threshRes.ok) {
-          const threshData = await threshRes.json();
-          setThresholds(threshData);
-        }
+  const [availableSlides, setAvailableSlides] = useState(["All"]);
+  const [selectedSlide, setSelectedSlide] = useState("All");
 
-        // Fetch metrics CSV
-        const csvData = await d3.csv('data/qc/qc_metrics.csv');
-        if (csvData && csvData.length > 0) {
-          setQcData(csvData);
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [threshRes, histRes] = await Promise.all([
+          fetch('data/qc/qc_thresholds.json'),
+          fetch('data/qc/qc_histograms.json')
+        ]);
+        
+        if (threshRes.ok) {
+          const tData = await threshRes.json();
+          setThresholds(tData);
+        }
+        if (histRes.ok) {
+          const hData = await histRes.json();
+          setHistData(hData);
+          
+          // Extract available slides from the top-level keys of the JSON
+          const slides = Object.keys(hData);
+          
+          // Ensure "All" is always at the top of the dropdown list
+          const sortedSlides = ["All", ...slides.filter(s => s !== "All")];
+          setAvailableSlides(sortedSlides);
         }
       } catch (err) {
         console.error("Failed to load QC data:", err);
       } finally {
         setIsLoading(false);
       }
-    };
-
+    }
     fetchData();
   }, []);
 
-  if (isLoading) {
-    return <div className="p-6 text-gray-500">Loading QC Metrics...</div>;
-  }
+  if (isLoading) return <div className="p-6 text-gray-500">Loading Fast QC Metrics...</div>;
+  if (!histData || !thresholds) return <div className="p-6 text-red-600">Failed to load QC JSONs.</div>;
 
-  if (!qcData || !thresholds) {
+  // Grab the specific data for the selected slide
+  const activeHistData = histData[selectedSlide];
+  const activeThresholds = thresholds[selectedSlide];
+
+  // Helper to construct a pre-binned bar chart that looks like a histogram
+  const makePlot = (metricKey, color, title, threshLines = []) => {
+    const d = activeHistData?.[metricKey];
+    if (!d) return <div className="text-gray-400 flex items-center justify-center h-full">No data</div>;
+
+    // Remove the last edge to match counts length
+    const xBins = d.edges.slice(0, -1);
+    
+    const shapes = threshLines
+      .filter(val => val !== null && val !== undefined)
+      .map(val => ({
+        type: 'line', x0: val, x1: val, y0: 0, y1: 1, yref: 'paper',
+        line: { color: 'red', width: 2, dash: 'dash' }
+      }));
+
     return (
-      <div className="p-6">
-        <p className="bg-red-50 p-4 border border-red-200 text-red-600 rounded">
-          Failed to load QC data. Please ensure qc_metrics.csv and qc_thresholds.json exist in public/data/qc/.
-        </p>
-      </div>
+      <Plot
+        data={[{ x: xBins, y: d.counts, type: 'bar', marker: { color } }]}
+        layout={{
+          autosize: true, bargap: 0, 
+          margin: { l: 50, r: 20, t: 10, b: 40 },
+          xaxis: { title }, yaxis: { title: 'Frequency' },
+          shapes
+        }}
+        useResizeHandler={true} style={{ width: "100%", height: "100%" }}
+      />
     );
-  }
-
-  // Parse columns into float arrays for plotting
-  const totalCounts = qcData.map(d => parseFloat(d.total_counts));
-  const uniqueGenes = qcData.map(d => parseFloat(d.n_genes_by_counts));
-  const area = qcData.map(d => parseFloat(d.area));
-  const nucleusSignal = qcData.map(d => parseFloat(d.nucleus_signal));
-
-  // Helper to draw a red cutoff line
-  const createThresholdLine = (value) => {
-    if (value === null || value === undefined) return [];
-    return [{
-      type: 'line',
-      x0: value,
-      x1: value,
-      y0: 0,
-      y1: 1,
-      yref: 'paper', // Spans the entire height of the plot
-      line: { color: 'red', width: 2, dash: 'dash' }
-    }];
   };
 
   return (
-    <div className="p-6 flex flex-col gap-6 h-full overflow-y-auto">
-      <div className="bg-white p-4 border shadow-sm rounded flex justify-between items-center">
+    <div className="p-6 flex flex-col gap-6 h-full overflow-y-auto bg-gray-100">
+      
+      {/* Header and Slide Filter Controls */}
+      <div className="bg-white p-4 border shadow-sm rounded flex flex-wrap gap-4 justify-between items-center">
         <div>
           <h2 className="text-xl font-bold text-gray-800">Pre-Filter Quality Control Metrics</h2>
           <p className="text-sm text-gray-500">
-            Interactive distributions of cell metrics. Red dashed lines indicate the cutoff thresholds applied during the pipeline.
+            Interactive distributions of cell metrics. Red dashed lines indicate cutoff thresholds.
           </p>
         </div>
-        <div className="text-sm bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded">
-          Total Cells Analyzed: <b>{qcData.length.toLocaleString()}</b>
-        </div>
+        
+        {/* New Slide Dropdown UI */}
+        <label className="text-sm font-semibold flex items-center gap-2">
+          <span className="text-gray-600">Slide:</span>
+          <select 
+            className="border border-gray-400 rounded px-3 py-1.5 bg-white font-normal outline-none focus:border-blue-500" 
+            value={selectedSlide} 
+            onChange={(e) => setSelectedSlide(e.target.value)}
+          >
+            {availableSlides.map(s => (
+              <option key={s} value={s}>{s === "All" ? "All Slides (Aggregate)" : s}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
-      {/* Grid for the 4 histograms */}
+      {/* Plot Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        
-        {/* Plot 1: Total Transcripts */}
         <div className="bg-white p-4 border shadow-sm rounded h-96 flex flex-col">
           <h3 className="font-bold text-gray-700 text-center mb-2">Total Transcripts per Cell</h3>
-          <div className="flex-1 min-h-0">
-            <Plot
-              data={[{ x: totalCounts, type: 'histogram', marker: { color: '#1f77b4' } }]}
-              layout={{
-                autosize: true,
-                margin: { l: 50, r: 20, t: 10, b: 40 }, // Reduced top margin (t: 10)
-                xaxis: { title: 'Counts' },
-                yaxis: { title: 'Frequency' },
-                shapes: createThresholdLine(thresholds.min_counts)
-              }}
-              useResizeHandler={true}
-              style={{ width: "100%", height: "100%" }}
-            />
-          </div>
+          <div className="flex-1 min-h-0">{makePlot('total_counts', '#1f77b4', 'Counts', [activeThresholds?.min_counts])}</div>
         </div>
 
-        {/* Plot 2: Unique Genes */}
         <div className="bg-white p-4 border shadow-sm rounded h-96 flex flex-col">
           <h3 className="font-bold text-gray-700 text-center mb-2">Unique Genes per Cell</h3>
+          <div className="bg-white p-4 border shadow-sm rounded h-96 flex flex-col">
+          <h3 className="font-bold text-gray-700 text-center mb-2">Unique Genes per Cell</h3>
           <div className="flex-1 min-h-0">
-            <Plot
-              data={[{ x: uniqueGenes, type: 'histogram', marker: { color: '#2ca02c' } }]}
-              layout={{
-                autosize: true,
-                margin: { l: 50, r: 20, t: 10, b: 40 },
-                xaxis: { title: 'Genes' },
-                yaxis: { title: 'Frequency' }
-              }}
-              useResizeHandler={true}
-              style={{ width: "100%", height: "100%" }}
-            />
+            {makePlot('n_genes_by_counts', '#2ca02c', 'Genes', [activeThresholds?.min_genes])}
           </div>
         </div>
+        </div>
 
-        {/* Plot 3: Cell Area */}
         <div className="bg-white p-4 border shadow-sm rounded h-96 flex flex-col">
-          <h3 className="font-bold text-gray-700 text-center mb-2">Cell Area ({thresholds.area_col})</h3>
-          <div className="flex-1 min-h-0">
-            <Plot
-              data={[{ x: area, type: 'histogram', marker: { color: '#ff7f0e' } }]}
-              layout={{
-                autosize: true,
-                margin: { l: 50, r: 20, t: 10, b: 40 },
-                xaxis: { title: 'Area' },
-                yaxis: { title: 'Frequency' },
-                shapes: [
-                  ...createThresholdLine(thresholds.min_area),
-                  ...createThresholdLine(thresholds.max_area)
-                ]
-              }}
-              useResizeHandler={true}
-              style={{ width: "100%", height: "100%" }}
-            />
-          </div>
+          <h3 className="font-bold text-gray-700 text-center mb-2">Cell Area ({activeThresholds?.area_col})</h3>
+          <div className="flex-1 min-h-0">{makePlot('area', '#ff7f0e', 'Area', [activeThresholds?.min_area, activeThresholds?.max_area])}</div>
         </div>
 
-        {/* Plot 4: Nucleus / DAPI Signal */}
         <div className="bg-white p-4 border shadow-sm rounded h-96 flex flex-col">
-          <h3 className="font-bold text-gray-700 text-center mb-2">
-            {thresholds.has_dapi ? 'Mean DAPI (Nucleus Signal)' : 'Nucleus to Cell Area Ratio'}
-          </h3>
-          <div className="flex-1 min-h-0">
-            <Plot
-              data={[{ x: nucleusSignal, type: 'histogram', marker: { color: '#9467bd' } }]}
-              layout={{
-                autosize: true,
-                margin: { l: 50, r: 20, t: 10, b: 40 },
-                xaxis: { title: 'Signal' },
-                yaxis: { title: 'Frequency' },
-                shapes: createThresholdLine(thresholds.min_dapi)
-              }}
-              useResizeHandler={true}
-              style={{ width: "100%", height: "100%" }}
-            />
-          </div>
+          <h3 className="font-bold text-gray-700 text-center mb-2">{activeThresholds?.has_dapi ? 'Mean DAPI' : 'Nucleus Ratio'}</h3>
+          <div className="flex-1 min-h-0">{makePlot('nucleus_signal', '#9467bd', 'Signal', [activeThresholds?.min_dapi])}</div>
         </div>
-
       </div>
     </div>
   );
