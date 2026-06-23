@@ -1,9 +1,8 @@
-// ./VitessceViewer.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { Vitessce } from 'vitessce';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
-import { API_BASE_URL, ZARR_DIR, EXTRA_OBS_SETS, SPATIAL_KEY, ANNOTATION_PREFIX, VITESSCE_DOT_SIZE, ANALYSIS_NAME, largeColorPalette } from './config';
+import { API_BASE_URL, ZARR_DIR, EXTRA_OBS_SETS, SPATIAL_KEY, ANNOTATION_PREFIX, VITESSCE_DOT_SIZE, ANALYSIS_NAME, largeColorPalette, themeColors } from './config';
 import InfoModal from './InfoModal';
 import { tabInfo } from './infoHelper';
 
@@ -24,10 +23,7 @@ export default function VitessceViewer({ n, r }) {
   const [spatialViewMode, setSpatialViewMode] = useState("segmentations"); 
 
   const [appliedFilters, setAppliedFilters] = useState({
-    slide: "All",
-    sample: "All",
-    category: "Cell Clusters",
-    viewMode: "segmentations"
+    slide: "All", sample: "All", category: "Cell Clusters", viewMode: "segmentations"
   });
 
   const [hierarchy, setHierarchy] = useState({});
@@ -47,7 +43,6 @@ export default function VitessceViewer({ n, r }) {
           setHierarchy(data);
           setAvailableSlides(["All", ...Object.keys(data)]);
         }
-
         const compRes = await fetch(`${API_BASE_URL}/cell_composition.json`);
         if (compRes.ok) setCompositionData(await compRes.json());
       } catch (err) {
@@ -106,21 +101,14 @@ export default function VitessceViewer({ n, r }) {
     const values = Object.values(currentDataCounts);
 
     const colors = labels.map((label) => {
-      if (hoveredSlice) return label === hoveredSlice ? colorMap[label] : '#e5e7eb';
-      if (clickedSlice) return label === clickedSlice ? colorMap[label] : '#e5e7eb';
+      if (hoveredSlice) return label === hoveredSlice ? colorMap[label] : themeColors.background;
+      if (clickedSlice) return label === clickedSlice ? colorMap[label] : themeColors.background;
       return colorMap[label];
     });
 
     return [{
-      values,
-      labels,
-      type: 'pie',
-      textinfo: 'label+percent',
-      textposition: 'inside',
-      hoverinfo: 'label+value+percent',
-      marker: { colors },
-      sort: false, 
-      hole: 0.3 
+      values, labels, type: 'pie', textinfo: 'label+percent', textposition: 'inside',
+      hoverinfo: 'label+value+percent', marker: { colors }, sort: false, hole: 0.3 
     }];
   }, [currentDataCounts, colorMap, hoveredSlice, clickedSlice]);
 
@@ -137,8 +125,7 @@ export default function VitessceViewer({ n, r }) {
     }
 
     const obsSetColor = Object.keys(colorMap).map(label => ({
-      path: [appliedFilters.category, label],
-      color: hexToRgb(colorMap[label])
+      path: [appliedFilters.category, label], color: hexToRgb(colorMap[label])
     }));
 
     const allObsSets = [
@@ -152,8 +139,6 @@ export default function VitessceViewer({ n, r }) {
       ...allObsSets.filter(set => set.name !== appliedFilters.category)
     ].filter(Boolean);
 
-    // FIX: Removed obsColorEncoding completely. Vitessce will default to cellSetSelection
-    // but automatically switch to geneSelection when a gene is clicked!
     const coordinationSpace = {
       embeddingType: { ET_UMAP: "UMAP", ET_SPATIAL: "SPATIAL_VIEW" },
       embeddingObsRadiusMode: { RM1: "manual" },
@@ -167,25 +152,9 @@ export default function VitessceViewer({ n, r }) {
       }
     };
 
-    const umapScopes = { 
-      embeddingType: "ET_UMAP", 
-      embeddingObsRadiusMode: "RM1", 
-      embeddingObsRadius: "R1", 
-      obsSetColor: "OSC1" 
-    };
-
-    const spatialScopes = { 
-      spatialSegmentationLayer: "SSL1", 
-      obsSetColor: "OSC1" 
-    };
-    
-    const pointSpatialScopes = {
-      embeddingType: "ET_SPATIAL", 
-      embeddingObsRadiusMode: "RM1", 
-      embeddingObsRadius: "R1", 
-      obsSetColor: "OSC1"
-    };
-    
+    const umapScopes = { embeddingType: "ET_UMAP", embeddingObsRadiusMode: "RM1", embeddingObsRadius: "R1", obsSetColor: "OSC1" };
+    const spatialScopes = { spatialSegmentationLayer: "SSL1", obsSetColor: "OSC1" };
+    const pointSpatialScopes = { embeddingType: "ET_SPATIAL", embeddingObsRadiusMode: "RM1", embeddingObsRadius: "R1", obsSetColor: "OSC1" };
     const obsSetsScopes = { obsSetColor: "OSC1" };
 
     if (clickedSlice) {
@@ -199,51 +168,31 @@ export default function VitessceViewer({ n, r }) {
     const files = [
       {
         fileType: "anndata-cells.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`,
-        options: { 
-          mappings: { 
-            UMAP: { key: `obsm/X_umap_n${n}`, dims: [0, 1] },
-            SPATIAL_VIEW: { key: spatialEmbeddingKey, dims: [0, 1] } 
-          } 
-        },
+        options: { mappings: { UMAP: { key: `obsm/X_umap_n${n}`, dims: [0, 1] }, SPATIAL_VIEW: { key: spatialEmbeddingKey, dims: [0, 1] } } },
         coordinationValues: { obsType: "cell" }
       },
       {
         fileType: "obsSets.anndata.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`,
-        options: sortedObsSets,
-        coordinationValues: { obsType: "cell" }
+        options: sortedObsSets, coordinationValues: { obsType: "cell" }
       },
       { 
         fileType: "obsFeatureMatrix.anndata.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`, 
-        options: { path: "X" },
-        coordinationValues: { obsType: "cell" }
+        options: { path: "X" }, coordinationValues: { obsType: "cell" }
       }
     ];
 
     if (appliedFilters.viewMode === "segmentations") {
-      files.push({
-        fileType: "obsLocations.anndata.zarr", 
-        url: `${API_BASE_URL}/${ZARR_DIR}/`,
-        options: { path: spatialEmbeddingKey },
-        coordinationValues: { obsType: "cell" }
-      });
-      files.push({
-        fileType: "obsSegmentations.json", 
-        url: `${API_BASE_URL}/${encodeURIComponent(segmentationsFile)}`,
-        coordinationValues: { obsType: "cell" }
-      });
+      files.push({ fileType: "obsLocations.anndata.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`, options: { path: spatialEmbeddingKey }, coordinationValues: { obsType: "cell" }});
+      files.push({ fileType: "obsSegmentations.json", url: `${API_BASE_URL}/${encodeURIComponent(segmentationsFile)}`, coordinationValues: { obsType: "cell" }});
     }
 
     return {
-      version: "1.0.15",
-      name: "Tyler Spatial View",
-      initStrategy: "auto",
+      version: "1.0.15", name: "Tyler Spatial View", initStrategy: "auto",
       datasets: [{ uid: "my-dataset", files: files }],
       coordinationSpace: coordinationSpace,
       layout: [
         { component: "scatterplot", coordinationScopes: umapScopes, x: 0, y: 0, w: 4, h: 12 },
-        appliedFilters.viewMode === "segmentations" 
-          ? { component: "spatial", coordinationScopes: spatialScopes, x: 4, y: 0, w: 4, h: 12 }
-          : { component: "scatterplot", coordinationScopes: pointSpatialScopes, x: 4, y: 0, w: 4, h: 12 },
+        appliedFilters.viewMode === "segmentations" ? { component: "spatial", coordinationScopes: spatialScopes, x: 4, y: 0, w: 4, h: 12 } : { component: "scatterplot", coordinationScopes: pointSpatialScopes, x: 4, y: 0, w: 4, h: 12 },
         { component: "layerController", coordinationScopes: spatialScopes, x: 8, y: 0, w: 4, h: 2 },
         { component: "obsSets", coordinationScopes: obsSetsScopes, x: 8, y: 2, w: 2, h: 4 },
         { component: "featureList", x: 10, y: 3, w: 2, h: 4 }
@@ -253,46 +202,45 @@ export default function VitessceViewer({ n, r }) {
 
   return (
     <div className="flex flex-col w-full h-full relative">
-      {/* Top Settings Bar */}
-      <div className="bg-gray-200 border-b border-gray-400 px-4 py-2 flex gap-6 items-center z-10">
-        <span className="font-bold text-sm text-gray-800 uppercase tracking-wide">Spatial Filters:</span>
+      <div className="bg-panel border-b border-borderLight px-4 py-2 flex gap-6 items-center z-10 shadow-sm">
+        <span className="font-bold text-sm text-textMain uppercase tracking-wide">Spatial Filters:</span>
 
-        <div className="flex bg-white rounded p-1 shadow-sm border border-gray-300">
+        <div className="flex bg-app rounded p-1 border border-borderMain">
           <button 
-            className={`px-3 py-1 rounded text-xs font-bold transition ${spatialViewMode === 'points' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+            className={`px-3 py-1 rounded text-xs font-bold transition ${spatialViewMode === 'points' ? 'bg-primary-light text-primary-dark shadow-sm' : 'text-textMuted hover:text-textMain'}`}
             onClick={() => setSpatialViewMode('points')}
           >
             Points
           </button>
           <button 
-            className={`px-3 py-1 rounded text-xs font-bold transition ${spatialViewMode === 'segmentations' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-800'}`}
+            className={`px-3 py-1 rounded text-xs font-bold transition ${spatialViewMode === 'segmentations' ? 'bg-primary-light text-primary-dark shadow-sm' : 'text-textMuted hover:text-textMain'}`}
             onClick={() => setSpatialViewMode('segmentations')}
           >
             Polygons
           </button>
         </div>
         
-        <label className="text-sm font-semibold flex items-center gap-2">
+        <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
           Slide:
-          <select className="border border-gray-400 rounded px-2 py-1 bg-white font-normal outline-none" value={selectedSlide} onChange={handleSlideChange}>
+          <select className="border border-borderMain rounded px-2 py-1 bg-panel text-textMain outline-none focus:border-primary" value={selectedSlide} onChange={handleSlideChange}>
             {availableSlides.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
 
-        <label className="text-sm font-semibold flex items-center gap-2">
+        <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
           Sample:
           <select 
-            className="border border-gray-400 rounded px-2 py-1 bg-white font-normal outline-none disabled:bg-gray-100 disabled:text-gray-400"
+            className="border border-borderMain rounded px-2 py-1 bg-panel text-textMain outline-none disabled:opacity-50 focus:border-primary"
             value={selectedSample} onChange={(e) => setSelectedSample(e.target.value)} disabled={availableSamples.length <= 1}
           >
             {availableSamples.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
 
-        <label className="text-sm font-semibold flex items-center gap-2 border-l border-gray-400 pl-6">
+        <label className="text-sm font-semibold flex items-center gap-2 border-l border-borderMain pl-6 text-textMain">
           Color By:
           <select 
-            className="border border-blue-500 rounded px-2 py-1 bg-blue-50 text-blue-900 font-bold outline-none cursor-pointer"
+            className="border border-primary rounded px-2 py-1 bg-primary-light text-primary-dark font-bold outline-none cursor-pointer focus:ring-1 focus:ring-primary"
             value={activeCategory} 
             onChange={(e) => setActiveCategory(e.target.value)}
           >
@@ -303,46 +251,29 @@ export default function VitessceViewer({ n, r }) {
         </label>
 
         <div className="ml-auto flex items-center gap-4">
-          {/* Refresh plot button */}
           <button
-            onClick={() => setAppliedFilters({
-              slide: selectedSlide,
-              sample: selectedSample,
-              category: activeCategory,
-              viewMode: spatialViewMode
-            })}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-1.5 px-4 rounded shadow transition"
+            onClick={() => setAppliedFilters({ slide: selectedSlide, sample: selectedSample, category: activeCategory, viewMode: spatialViewMode })}
+            className="bg-primary hover:bg-primary-dark text-textInverse text-sm font-bold py-1.5 px-4 rounded shadow transition"
           >
             Refresh Plot
           </button>
-
-          <InfoModal 
-            title={tabInfo.interactive.title} 
-            content={tabInfo.interactive.content} 
-          />
+          <InfoModal title={tabInfo.interactive.title} content={tabInfo.interactive.content} />
         </div>
       </div>
 
-      {/* Main Plot Area */}
       <div className={`flex-1 w-full min-h-0 relative ${appliedFilters.viewMode === 'points' ? 'flip-spatial-y' : ''}`}>
-        
-        <Vitessce
-          key={`vitessce-${n}-${r}-${appliedFilters.category}-${appliedFilters.slide}-${appliedFilters.sample}-${appliedFilters.viewMode}`}
-          config={config}
-          theme="light"
-        />
+        <Vitessce key={`vitessce-${n}-${r}-${appliedFilters.category}-${appliedFilters.slide}-${appliedFilters.sample}-${appliedFilters.viewMode}`} config={config} theme="light" />
 
-        {/* PIE CHART OVERLAY */}
-        <div className="absolute bottom-0 right-0 w-1/3 h-[50%] bg-white z-10 border-t border-l border-gray-300 p-3 flex flex-col shadow-[-4px_-4px_8px_-1px_rgba(0,0,0,0.05)]">
-          <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-100">
-            <span className="text-sm font-bold text-gray-700 uppercase tracking-wide">
-              Composition: <span className="text-blue-600">{appliedFilters.category}</span>
+        <div className="absolute bottom-0 right-0 w-1/3 h-[50%] bg-panel z-10 border-t border-l border-borderLight p-3 flex flex-col shadow-[-4px_-4px_8px_-1px_rgba(0,0,0,0.05)]">
+          <div className="flex justify-between items-center mb-2 pb-2 border-b border-borderLight">
+            <span className="text-sm font-bold text-textMain uppercase tracking-wide">
+              Composition: <span className="text-primary">{appliedFilters.category}</span>
             </span>
             
             {clickedSlice && (
               <button
                 onClick={() => setClickedSlice(null)}
-                className="text-xs font-semibold bg-red-100 border border-red-200 text-red-700 px-3 py-1 rounded shadow-sm hover:bg-red-200 transition"
+                className="text-xs font-semibold bg-danger-light border border-danger-light text-danger-dark px-3 py-1 rounded shadow-sm hover:bg-danger hover:text-textInverse transition"
               >
                 ✕ Clear Plot Filter: <b>{clickedSlice}</b>
               </button>
@@ -354,18 +285,16 @@ export default function VitessceViewer({ n, r }) {
               <Plot
                 data={pieChartData}
                 layout={{
-                  autosize: true,
-                  margin: { l: 60, r: 60, t: 40, b: 40 },
-                  showlegend: true
+                  autosize: true, margin: { l: 60, r: 60, t: 40, b: 40 }, showlegend: true,
+                  paper_bgcolor: themeColors.paper, plot_bgcolor: themeColors.paper, font: { color: themeColors.label }
                 }}
-                useResizeHandler={true}
-                style={{ width: "100%", height: "100%" }}
+                useResizeHandler={true} style={{ width: "100%", height: "100%" }}
                 onHover={(data) => setHoveredSlice(data.points[0].label)}
                 onUnhover={() => setHoveredSlice(null)}
                 onClick={(data) => setClickedSlice(data.points[0].label === clickedSlice ? null : data.points[0].label)}
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-sm text-gray-400">Loading composition data...</div>
+              <div className="flex items-center justify-center h-full text-sm text-textMuted">Loading composition data...</div>
             )}
           </div>
         </div>

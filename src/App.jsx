@@ -16,27 +16,24 @@ import ConditionsDE from './ConditionsDE';
 // We now pass our state and functions into the layout as props
 // Add availableN and availableR to the incoming props
 const Layout = ({ children, availableN, availableR, selectedN, setSelectedN, selectedR, setSelectedR, handleRefresh, sidebarOpen, setSidebarOpen }) => {
-  const activeClass = "bg-gray-500 text-white font-semibold px-4 py-3";
-  const inactiveClass = "bg-white text-black font-semibold px-4 py-3 border-r border-gray-300 hover:bg-gray-100";
+  // Using our new semantic variables
+  const activeClass = "bg-primary text-textInverse font-semibold px-4 py-3";
+  const inactiveClass = "bg-panel text-textMuted font-semibold px-4 py-3 border-r border-borderLight hover:bg-primary-light hover:text-primary-dark";
 
    useEffect(() => {
-    // Your sidebar CSS transition takes 200ms (duration-200).
-    // We wait slightly longer (250ms) for the animation to completely finish,
-    // then fire a fake window resize event to force Vitessce/Plotly to recalculate their bounds.
     const timer = setTimeout(() => {
       window.dispatchEvent(new Event('resize'));
     }, 250);
-
-    // Cleanup the timer if the user spams the toggle button
     return () => clearTimeout(timer);
   }, [sidebarOpen]);
 
   return (
-    <div className="flex flex-col h-screen">
-      <header className="bg-gray-400 text-3xl p-3 flex items-center gap-4 text-white font-semibold">
+    <div className="flex flex-col h-screen bg-app">
+      {/* Header */}
+      <header className="bg-header text-3xl p-3 flex items-center gap-4 text-textInverse font-semibold">
         <button
           onClick={() => setSidebarOpen(prev => !prev)}
-          className="text-2xl flex items-center justify-center w-10 h-10 rounded hover:bg-gray-500 transition-colors focus:outline-none cursor-pointer"
+          className="text-2xl flex items-center justify-center w-10 h-10 rounded hover:bg-primary transition-colors focus:outline-none cursor-pointer"
           title="Toggle Settings Sidebar"
         >
           ☰
@@ -44,7 +41,8 @@ const Layout = ({ children, availableN, availableR, selectedN, setSelectedN, sel
         <span>{PROJECT_TITLE}</span>
       </header>
 
-      <nav className="flex border-b border-gray-400 bg-white shadow-sm">
+      {/* Navigation */}
+      <nav className="flex border-b border-borderMain bg-panel shadow-sm">
         <NavLink to="/qc" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Quality Control</NavLink>
         <NavLink to="/interactive" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Interactive Explorer</NavLink>
         <NavLink to="/multiplex" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Multiplex Overlay</NavLink> 
@@ -54,57 +52,48 @@ const Layout = ({ children, availableN, availableR, selectedN, setSelectedN, sel
         <NavLink to="/de-analysis" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Cell Type DE Analysis</NavLink>
         <NavLink to="/conditions-de" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Conditions DE Analysis</NavLink>
         <NavLink to="/annotation" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Cell Type Annotation</NavLink>
-
       </nav>
 
       <main className="flex-1 overflow-auto flex">
+        {/* Sidebar */}
         <aside
-          className={`bg-gray-300 border-r border-gray-400 flex flex-col transition-all duration-200 ${
+          className={`bg-sidebar border-r border-borderMain flex flex-col transition-all duration-200 ${
             sidebarOpen ? "w-64" : "w-0 overflow-hidden"
           }`}
         >
-          <div className="p-4 border-b border-gray-400 flex justify-center gap-2">
-            <button onClick={handleRefresh} className="bg-green-200 border border-black px-4 py-1 text-sm font-semibold rounded shadow-sm hover:bg-green-300">Refresh plot</button>
-            <button className="bg-red-200 border border-black px-4 py-1 text-sm font-semibold rounded shadow-sm hover:bg-red-300">Clear Filters</button>
+          <div className="p-4 bg-borderLight flex justify-center border-b border-borderMain">
+            <img src="/logo_hor.svg" alt="Project Logo" className="h-10 w-auto" />
+          </div>
+          <div className="p-4 border-b border-borderMain flex justify-center gap-2">
+            <button onClick={handleRefresh} className="bg-success-light text-success-dark border border-success px-4 py-1 text-sm font-semibold rounded shadow-sm hover:bg-success hover:text-textInverse transition-colors">Refresh plot</button>
+            <button className="bg-danger-light text-danger-dark border border-danger px-4 py-1 text-sm font-semibold rounded shadow-sm hover:bg-danger hover:text-textInverse transition-colors">Clear Filters</button>
           </div>
 
           <div className="p-4 overflow-y-auto">
             <details className="mb-4" open>
-              <summary className="font-bold cursor-pointer outline-none border-b border-gray-400 pb-1 mb-2">Settings</summary>
+              <summary className="font-bold text-textMain cursor-pointer outline-none border-b border-borderMain pb-1 mb-2">Settings</summary>
               <div className="ml-2">
                 
-                {/* DYNAMIC Neighbours Dropdown */}
                 <details className="mb-3" open>
-                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer outline-none">Neighbours (n)</summary>
-                  <div className="ml-4 mt-1 space-y-1 bg-gray-200 p-2 rounded border border-gray-300">
-                    {availableN.length === 0 && <span className="text-xs text-gray-500">Scanning...</span>}
+                  <summary className="text-sm font-semibold text-textMuted cursor-pointer outline-none">Neighbours (n)</summary>
+                  <div className="ml-4 mt-1 space-y-1 bg-borderLight p-2 rounded border border-borderMain">
+                    {availableN.length === 0 && <span className="text-xs text-textMuted">Scanning...</span>}
                     {availableN.map(val => (
-                      <label key={val} className="block text-sm cursor-pointer">
-                        <input 
-                          type="radio" name="n_val" value={val} 
-                          checked={selectedN === String(val)} 
-                          onChange={(e) => setSelectedN(e.target.value)} 
-                          className="mr-2"
-                        /> 
+                      <label key={val} className="block text-sm text-textMain cursor-pointer">
+                        <input type="radio" name="n_val" value={val} checked={selectedN === String(val)} onChange={(e) => setSelectedN(e.target.value)} className="mr-2 accent-primary" /> 
                         {val}
                       </label>
                     ))}
                   </div>
                 </details>
 
-                {/* DYNAMIC Resolution Dropdown */}
                 <details className="mb-3" open>
-                  <summary className="text-sm font-semibold text-gray-700 cursor-pointer outline-none">Resolution (r)</summary>
-                  <div className="ml-4 mt-1 space-y-1 bg-gray-200 p-2 rounded border border-gray-300">
-                    {availableR.length === 0 && <span className="text-xs text-gray-500">Scanning...</span>}
+                  <summary className="text-sm font-semibold text-textMuted cursor-pointer outline-none">Resolution (r)</summary>
+                  <div className="ml-4 mt-1 space-y-1 bg-borderLight p-2 rounded border border-borderMain">
+                    {availableR.length === 0 && <span className="text-xs text-textMuted">Scanning...</span>}
                     {availableR.map(val => (
-                      <label key={val} className="block text-sm cursor-pointer">
-                        <input 
-                          type="radio" name="r_val" value={val} 
-                          checked={selectedR === String(val)} 
-                          onChange={(e) => setSelectedR(e.target.value)} 
-                          className="mr-2"
-                        /> 
+                      <label key={val} className="block text-sm text-textMain cursor-pointer">
+                        <input type="radio" name="r_val" value={val} checked={selectedR === String(val)} onChange={(e) => setSelectedR(e.target.value)} className="mr-2 accent-primary" /> 
                         {val}
                       </label>
                     ))}
@@ -116,7 +105,7 @@ const Layout = ({ children, availableN, availableR, selectedN, setSelectedN, sel
           </div>
         </aside>
 
-        <div className="flex-1 bg-gray-100">
+        <div className="flex-1 bg-app">
           {children}
         </div>
       </main>

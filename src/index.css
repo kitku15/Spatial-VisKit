@@ -2,12 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* --- UI BACKGROUNDS --- */
+  --bg-app: #f8fafc;       /* Light gray background for the whole app */
+  --bg-panel: #ffffff;     /* White for cards and panels */
+  --bg-header: #0f172a;    /* Dark navy for the top header */
+  --bg-sidebar: #f1f5f9;   /* Slightly darker gray for sidebar */
+
+  /* --- BORDERS --- */
+  --border-light: #e2e8f0; 
+  --border-main: #cbd5e1;
+  --border-dark: #94a3b8;
+
+  /* --- TEXT COLORS --- */
+  --text-main: #1e293b;    /* Dark gray for standard text */
+  --text-muted: #64748b;   /* Lighter gray for secondary text */
+  --text-inverse: #ffffff; /* White text for dark backgrounds */
+
+  /* --- BRAND / SEMANTIC COLORS --- */
+  /* Primary (Blue) */
+  --primary: #3b82f6;
+  --primary-light: #eff6ff;
+  --primary-dark: #1d4ed8;
+
+  /* Success (Green) */
+  --success: #22c55e;
+  --success-light: #f0fdf4;
+  --success-dark: #15803d;
+
+  /* Danger (Red) */
+  --danger: #ef4444;
+  --danger-light: #fef2f2;
+  --danger-dark: #b91c1c;
+
+  /* Warning (Orange/Amber) */
+  --warning: #f59e0b;
+  --warning-light: #fffbeb;
+  --warning-dark: #b45309;
+
+  /* Info (Purple) */
+  --info: #a855f7;
+  --info-light: #faf5ff;
+  --info-dark: #7e22ce;
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
-  background-color: #efaed9; /* Light gray background like your PDF */
+  background-color: var(--bg-app);
+  color: var(--text-main);
 }
 
+/* Vitessce Fixes */
 .vitessce-container {
   height: 100% !important;
   width: 100%;

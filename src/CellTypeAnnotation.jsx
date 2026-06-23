@@ -3,23 +3,11 @@ import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
 import InfoModal from './InfoModal';
 import { tabInfo } from './infoHelper';
+import { annotationColorPalette, themeColors } from './config';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
 
-// ----------------------------
-// Color Management Logic
-// ----------------------------
-// A vibrant, distinct color palette for the clusters
-const colorPalette = [
-  '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-  '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf',
-  '#aec7e8', '#ffbb78', '#98df8a', '#ff9896', '#c5b0d5',
-  '#c49c94', '#f7b6d2', '#c7c7c7', '#dbdb8d', '#9edae5',
-  '#393b79', '#637939', '#8c6d31', '#843c39', '#7b4173'
-];
-
-// Helper to convert HEX to RGBA so our links can be slightly transparent
 const hexToRgba = (hex, alpha) => {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -45,10 +33,8 @@ const CellTypeAnnotation = ({ availableColumns }) => {
   const [errorMsg, setErrorMsg] = useState("");
   const [selectedInsight, setSelectedInsight] = useState(null);
 
-  // --- Helper to remove the ugly column prefix from names ---
   const cleanLabel = (rawLabel) => {
     let clean = rawLabel;
-    // Loop through the selected columns and strip them from the start of the label
     selectedCols.forEach(col => {
       const prefix = col + "_";
       if (clean.startsWith(prefix)) {
@@ -58,7 +44,6 @@ const CellTypeAnnotation = ({ availableColumns }) => {
     return clean;
   };
 
-  // --- Handlers for Adding/Removing Columns ---
   const handleColumnChange = (index, value) => {
     const newCols = [...selectedCols];
     newCols[index] = value;
@@ -75,7 +60,6 @@ const CellTypeAnnotation = ({ availableColumns }) => {
     setSelectedCols(newCols);
   };
 
-  // --- Data Fetching and Stitching Logic ---
   const handleGenerateSankey = async () => {
     if (selectedCols.some(col => !col)) {
       setErrorMsg("Please ensure all dropdowns have a selection.");
@@ -98,16 +82,12 @@ const CellTypeAnnotation = ({ availableColumns }) => {
       const nodeNameToIndex = new Map();
       const globalLinks = [];
 
-      // Helper function to keep track of nodes AND assign them unique colors
       const getOrAddNode = (name) => {
         if (!nodeNameToIndex.has(name)) {
           const index = globalNodes.length;
           nodeNameToIndex.set(name, index);
-          
-          // Assign a color from the palette, looping back to the start if we run out
-          const nodeColor = colorPalette[index % colorPalette.length];
+          const nodeColor = annotationColorPalette[index % annotationColorPalette.length];
           globalNodes.push({ name, color: nodeColor });
-          
           return index;
         }
         return nodeNameToIndex.get(name);
@@ -131,7 +111,6 @@ const CellTypeAnnotation = ({ availableColumns }) => {
           const globalSourceIdx = getOrAddNode(sourceName);
           const globalTargetIdx = getOrAddNode(targetName);
 
-          // Get the source node's solid color, and make it 40% transparent for the link
           const sourceColor = globalNodes[globalSourceIdx].color;
           const linkColor = hexToRgba(sourceColor, 0.4);
 
@@ -139,20 +118,18 @@ const CellTypeAnnotation = ({ availableColumns }) => {
             source: globalSourceIdx,
             target: globalTargetIdx,
             value: link.value,
-            color: linkColor // Apply the custom link color
+            color: linkColor
           });
         });
       }
 
-      // Build the final Plotly object
       const plotlySankey = {
         type: "sankey",
         orientation: "h",
         node: {
           pad: 15,
           thickness: 20,
-          line: { color: "black", width: 0.5 },
-          // Apply the cleanLabel function here to make the names pretty!
+          line: { color: themeColors.black, width: 0.5 },
           label: globalNodes.map(n => cleanLabel(n.name)),
           color: globalNodes.map(n => n.color) 
         },
@@ -174,23 +151,20 @@ const CellTypeAnnotation = ({ availableColumns }) => {
   };
 
   return (
-    <div className="p-6 flex flex-col gap-6 h-full">
-      {/* Top Controls Section */}
-      <div className="bg-white p-4 border shadow-sm rounded">
+    <div className="p-6 flex flex-col gap-6 h-full bg-app">
+      
+      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Annotation Flow Comparison</h2>
+          <h2 className="text-xl font-bold text-textMain">Annotation Flow Comparison</h2>
           <div className="flex items-center gap-4">
             <button 
               onClick={addColumn}
-              className="bg-green-100 border border-green-600 text-green-700 font-semibold px-3 py-1 rounded text-sm hover:bg-green-200 transition"
+              className="bg-success-light text-success-dark border border-success px-3 py-1 rounded text-sm hover:bg-success hover:text-textInverse transition"
             >
               + Add Flow Step
             </button>
-            <div className="pl-4 border-l border-gray-300 flex items-center">
-              <InfoModal
-                title={tabInfo.annotation.title}
-                content={tabInfo.annotation.content}
-              />
+            <div className="pl-4 border-l border-borderMain flex items-center">
+              <InfoModal title={tabInfo.annotation.title} content={tabInfo.annotation.content} />
             </div>
           </div>
         </div>
@@ -199,11 +173,11 @@ const CellTypeAnnotation = ({ availableColumns }) => {
           {selectedCols.map((col, index) => (
             <div key={`col-select-${index}`} className="flex-1 min-w-[200px] flex items-end gap-2">
               <div className="flex-1">
-                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-textMuted mb-1 uppercase tracking-wider">
                   Step {index + 1}
                 </label>
                 <select 
-                  className="w-full border border-gray-300 p-2 rounded text-sm"
+                  className="w-full border border-borderMain p-2 rounded text-sm bg-panel text-textMain outline-none focus:border-primary"
                   value={col}
                   onChange={(e) => handleColumnChange(index, e.target.value)}
                 >
@@ -213,14 +187,14 @@ const CellTypeAnnotation = ({ availableColumns }) => {
               {selectedCols.length > 2 && (
                 <button 
                   onClick={() => removeColumn(index)}
-                  className="bg-red-100 text-red-600 px-2 py-2 rounded hover:bg-red-200 border border-red-200"
+                  className="bg-danger-light text-danger px-2 py-2 rounded hover:bg-danger hover:text-textInverse border border-danger-light transition-colors"
                   title="Remove this step"
                 >
                   ✕
                 </button>
               )}
               {index < selectedCols.length - 1 && (
-                <div className="text-gray-400 font-bold px-2 py-2">→</div>
+                <div className="text-textMuted font-bold px-2 py-2">→</div>
               )}
             </div>
           ))}
@@ -228,60 +202,55 @@ const CellTypeAnnotation = ({ availableColumns }) => {
           <button 
             onClick={handleGenerateSankey}
             disabled={isLoading}
-            className={`font-semibold px-6 py-2 rounded shadow transition ml-auto ${isLoading ? 'bg-gray-400 text-gray-200' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+            className={`font-semibold px-6 py-2 rounded shadow transition ml-auto border ${isLoading ? 'bg-borderMain text-borderLight border-borderMain cursor-not-allowed' : 'bg-primary text-textInverse border-primary hover:bg-primary-dark'}`}
           >
             {isLoading ? 'Loading...' : 'Generate Sankey'}
           </button>
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div className="flex gap-6 flex-1 min-h-0">
         
-        {/* Sankey Diagram Container */}
-        <div className="bg-white p-4 border shadow-sm rounded flex-1 flex flex-col relative">
-          <h3 className="font-bold text-lg mb-2 text-center text-gray-700">
-            Multi-Step Annotation Flow
-          </h3>
+        <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex-1 flex flex-col relative">
+          <h3 className="font-bold text-lg mb-2 text-center text-textMain">Multi-Step Annotation Flow</h3>
           
-          <div className="flex-1 w-full bg-gray-50 flex items-center justify-center border border-dashed border-gray-200 rounded">
-             {errorMsg && <p className="text-red-500 font-semibold">{errorMsg}</p>}
-             {!errorMsg && !plotData && !isLoading && <p className="text-gray-400">Select column steps and click Generate</p>}
+          <div className="flex-1 w-full bg-app flex items-center justify-center border border-dashed border-borderMain rounded">
+             {errorMsg && <p className="text-danger font-semibold">{errorMsg}</p>}
+             {!errorMsg && !plotData && !isLoading && <p className="text-textMuted">Select column steps and click Generate</p>}
              
              {plotData && (
                <Plot
                   data={plotData}
-                  layout={{ autosize: true, margin: { l: 20, r: 20, t: 40, b: 20 } }}
+                  layout={{ 
+                    autosize: true, 
+                    margin: { l: 20, r: 20, t: 40, b: 20 },
+                    paper_bgcolor: themeColors.background,
+                    plot_bgcolor: themeColors.background,
+                    font: { color: themeColors.label }
+                  }}
                   useResizeHandler={true}
                   style={{ width: "100%", height: "100%" }}
                   onHover={(e) => {
                     if (!e || !e.points || e.points.length === 0) return;
-                    
                     const point = e.points[0];
                     const sankey = plotData[0];
 
-                    // 1. Determine which Node to display
                     let nodeIndex;
                     if ('source' in point && 'target' in point) {
-                      // If they hovered a link, show the details for its SOURCE node
                       const linkIndex = point.pointNumber;
                       nodeIndex = sankey.link.source[linkIndex];
                     } else {
-                      // If they hovered a node, use it directly
                       nodeIndex = point.pointNumber;
                     }
 
-                    // 2. Calculate the total cells for this node by summing its links
                     let nodeValueOut = 0;
                     let nodeValueIn = 0;
                     for (let i = 0; i < sankey.link.source.length; i++) {
                       if (sankey.link.source[i] === nodeIndex) nodeValueOut += sankey.link.value[i];
                       if (sankey.link.target[i] === nodeIndex) nodeValueIn += sankey.link.value[i];
                     }
-                    // A node's true total is the max of its incoming or outgoing links
                     const totalCells = Math.max(nodeValueOut, nodeValueIn);
 
-                    // 3. Build the Incoming and Outgoing lists
                     const outgoing = [];
                     const incoming = [];
 
@@ -305,7 +274,6 @@ const CellTypeAnnotation = ({ availableColumns }) => {
                     outgoing.sort((a, b) => b.value - a.value);
                     incoming.sort((a, b) => b.value - a.value);
 
-                    // 4. Update the UI state
                     setSelectedInsight({
                       type: 'node',
                       label: sankey.node.label[nodeIndex],
@@ -319,34 +287,32 @@ const CellTypeAnnotation = ({ availableColumns }) => {
           </div>
         </div>
 
-        {/* Insights Panel */}
-        <div className="bg-white p-4 border shadow-sm rounded w-1/4 flex flex-col overflow-y-auto">
-          <h3 className="font-bold text-lg mb-2 text-gray-700 border-b pb-2">Insights</h3>
+        <div className="bg-panel p-4 border border-borderLight shadow-sm rounded w-1/4 flex flex-col overflow-y-auto">
+          <h3 className="font-bold text-lg mb-2 text-textMain border-b border-borderMain pb-2">Insights</h3>
           
           {!selectedInsight ? (
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-textMuted mt-2">
               Hover over any cluster (box) or connection line (flow) in the diagram to view detailed transition statistics.
             </p>
           ) : (
             <div className="mt-2 animate-fade-in flex flex-col gap-4">
-              <div className="bg-green-50 border border-green-200 p-3 rounded shadow-sm">
-                <p className="text-sm text-gray-800 font-semibold mb-1">
+              <div className="bg-success-light border border-success-light p-3 rounded shadow-sm">
+                <p className="text-sm text-textMain font-semibold mb-1">
                   {selectedInsight.label}
                 </p>
-                <p className="text-sm text-gray-600">
-                  Total Cells: <span className="font-bold text-green-700">{selectedInsight.value.toLocaleString()}</span>
+                <p className="text-sm text-textMain">
+                  Total Cells: <span className="font-bold text-success-dark">{selectedInsight.value.toLocaleString()}</span>
                 </p>
               </div>
 
-              {/* OUTGOING: Where do the cells go? */}
               {selectedInsight.outgoing && selectedInsight.outgoing.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Becomes (Next Step)</h4>
+                  <h4 className="text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Becomes (Next Step)</h4>
                   <ul className="flex flex-col gap-1.5">
                     {selectedInsight.outgoing.map((out, idx) => (
-                      <li key={`out-${idx}`} className="text-sm flex justify-between items-center bg-gray-50 border border-gray-200 p-1.5 rounded">
-                        <span className="font-medium text-gray-700 truncate mr-2" title={out.targetLabel}>{out.targetLabel}</span>
-                        <span className="text-xs font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded shrink-0">
+                      <li key={`out-${idx}`} className="text-sm flex justify-between items-center bg-app border border-borderMain p-1.5 rounded">
+                        <span className="font-medium text-textMain truncate mr-2" title={out.targetLabel}>{out.targetLabel}</span>
+                        <span className="text-xs font-bold text-primary-dark bg-primary-light px-1.5 py-0.5 rounded shrink-0 border border-primary-light">
                           {out.pct}% ({out.value})
                         </span>
                       </li>
@@ -355,15 +321,14 @@ const CellTypeAnnotation = ({ availableColumns }) => {
                 </div>
               )}
 
-              {/* INCOMING: Where did the cells come from? */}
               {selectedInsight.incoming && selectedInsight.incoming.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-2">Comes From (Previous Step)</h4>
+                  <h4 className="text-xs font-bold text-textMuted uppercase tracking-wider mb-2 mt-2">Comes From (Prev Step)</h4>
                   <ul className="flex flex-col gap-1.5">
                     {selectedInsight.incoming.map((inc, idx) => (
-                      <li key={`inc-${idx}`} className="text-sm flex justify-between items-center bg-gray-50 border border-gray-200 p-1.5 rounded">
-                        <span className="font-medium text-gray-700 truncate mr-2" title={inc.sourceLabel}>{inc.sourceLabel}</span>
-                        <span className="text-xs font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded shrink-0">
+                      <li key={`inc-${idx}`} className="text-sm flex justify-between items-center bg-app border border-borderMain p-1.5 rounded">
+                        <span className="font-medium text-textMain truncate mr-2" title={inc.sourceLabel}>{inc.sourceLabel}</span>
+                        <span className="text-xs font-bold text-info-dark bg-info-light px-1.5 py-0.5 rounded shrink-0 border border-info-light">
                           {inc.pct}% ({inc.value})
                         </span>
                       </li>

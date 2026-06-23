@@ -4,11 +4,11 @@ import factory from 'react-plotly.js/factory';
 import * as d3 from 'd3';
 import InfoModal from './InfoModal';
 import { tabInfo } from './infoHelper';
+import { themeColors } from './config';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
 
-// --- Standard Single Searchable Dropdown ---
 function SearchableSelect({ options, value, onChange, placeholder }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -26,24 +26,24 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
 
   return (
     <div ref={wrapperRef} className="relative flex-1 max-w-[250px]">
-      <div className="border border-gray-300 bg-white p-1.5 rounded flex items-center justify-between cursor-text" onClick={() => setIsOpen(true)}>
+      <div className="border border-borderMain bg-panel p-1.5 rounded flex items-center justify-between cursor-text" onClick={() => setIsOpen(true)}>
         <input
-          type="text" className="outline-none w-full text-sm px-1 bg-transparent"
+          type="text" className="outline-none w-full text-sm px-1 bg-transparent text-textMain"
           placeholder={value ? value.original : placeholder}
           value={isOpen ? search : (value ? value.original : "")}
           onChange={(e) => { setSearch(e.target.value); setIsOpen(true); }}
         />
-        <button className="text-gray-500 px-1 text-xs cursor-pointer" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>▼</button>
+        <button className="text-textMuted px-1 text-xs cursor-pointer hover:text-textMain" onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>▼</button>
       </div>
       {isOpen && (
-        <div className="absolute z-20 w-full mt-1 bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto">
+        <div className="absolute z-20 w-full mt-1 bg-panel border border-borderMain rounded shadow-lg max-h-48 overflow-y-auto">
           {filteredOptions.length > 0 ? (
             filteredOptions.map((opt) => (
-              <div key={opt.safe} className="p-2 text-sm hover:bg-blue-100 cursor-pointer" onClick={() => { onChange(opt); setSearch(""); setIsOpen(false); }}>
+              <div key={opt.safe} className="p-2 text-sm text-textMain hover:bg-primary-light cursor-pointer" onClick={() => { onChange(opt); setSearch(""); setIsOpen(false); }}>
                 {opt.original}
               </div>
             ))
-          ) : (<div className="p-2 text-sm text-gray-500 italic">No genes found</div>)}
+          ) : (<div className="p-2 text-sm text-textMuted italic">No genes found</div>)}
         </div>
       )}
     </div>
@@ -51,26 +51,21 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
 }
 
 export default function ConditionsDE() {
-  // Config & Structure State
   const [config, setConfig] = useState(null);
   const [comparisonsMap, setComparisonsMap] = useState({});
   const [availableGenes, setAvailableGenes] = useState([]);
   
-  // Selection State
   const [selectedCellType, setSelectedCellType] = useState("");
   const [selectedComparison, setSelectedComparison] = useState("");
   
-  // 3 Explicit slots for the 3-column row
   const [panelGenes, setPanelGenes] = useState([null, null, null]);
 
-  // Data State
   const [volcanoData, setVolcanoData] = useState(null);
   const [summaryTable, setSummaryTable] = useState([]);
   const [cellClusters, setCellClusters] = useState(null);
   const [geneExpressions, setGeneExpressions] = useState({});
   const [filterZeros, setFilterZeros] = useState(false);
 
-  // 1. Initial Load
   useEffect(() => {
     async function initData() {
       try {
@@ -97,7 +92,6 @@ export default function ConditionsDE() {
     initData();
   }, []);
 
-  // Update comparison dropdown when cell type changes
   useEffect(() => {
     if (selectedCellType && comparisonsMap[selectedCellType]) {
       const availableComparisons = comparisonsMap[selectedCellType];
@@ -105,7 +99,6 @@ export default function ConditionsDE() {
     }
   }, [selectedCellType, comparisonsMap]);
 
-  // 2. Fetch Plot Data when Selections Change
   useEffect(() => {
     if (!selectedCellType || !selectedComparison) return;
 
@@ -124,14 +117,12 @@ export default function ConditionsDE() {
           const defaultGeneNames = [...upList.slice(0, 2), ...downList.slice(0, 1)];
           const initialGenes = defaultGeneNames.map(name => availableGenes.find(g => g.original === name)).filter(Boolean);
           
-          // Pad to ensure we have exactly 3 slots
           const paddedGenes = [
             initialGenes[0] || null, 
             initialGenes[1] || null, 
             initialGenes[2] || null
           ];
           
-          // Only auto-populate if all current panels are empty
           if (panelGenes.every(g => g === null)) {
             setPanelGenes(paddedGenes);
           }
@@ -141,7 +132,6 @@ export default function ConditionsDE() {
 
   }, [selectedCellType, selectedComparison, availableGenes]);
 
-  // 3. Dynamically Fetch Expressions for Selected Genes
   useEffect(() => {
     panelGenes.forEach(g => {
       if (g && !geneExpressions[g.safe]) {
@@ -172,9 +162,9 @@ export default function ConditionsDE() {
       logp.push(-Math.log10(p));
       hover.push(`<b>${volcanoData.names[i]}</b><br>Log2FC: ${fc}<br>Adj P: ${p.toExponential(2)}`);
       
-      if (fc > 0.5 && p < 0.05) colors.push('#d62728');
-      else if (fc < -0.5 && p < 0.05) colors.push('#1f77b4');
-      else colors.push('#b3b3b3');
+      if (fc > 0.5 && p < 0.05) colors.push(themeColors.danger);
+      else if (fc < -0.5 && p < 0.05) colors.push(themeColors.primary);
+      else colors.push(themeColors.neutral);
     }
 
     return [{
@@ -184,7 +174,6 @@ export default function ConditionsDE() {
     }];
   }, [volcanoData]);
 
-  // --- Helper to Generate a Split Violin & Mean Lines ---
   const createSingleSplitViolin = (gene) => {
     if (!config || !cellClusters || !gene || !geneExpressions[gene.safe]) return null;
 
@@ -217,25 +206,17 @@ export default function ConditionsDE() {
       }
     }
 
-    // Calculate the means for our full-width reference lines
     const testMean = testVals.length > 0 ? testVals.reduce((a, b) => a + b, 0) / testVals.length : 0;
     const refMean = refVals.length > 0 ? refVals.reduce((a, b) => a + b, 0) / refVals.length : 0;
 
-    // Create the full-width dotted lines
     const meanShapes = [
       {
-        type: 'line',
-        xref: 'paper', x0: 0, x1: 1, // 'paper' makes it span the full plot width
-        yref: 'y', y0: testMean, y1: testMean,
-        line: { color: '#d62728', dash: 'dot', width: 2 },
-        opacity: 0.8
+        type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: testMean, y1: testMean,
+        line: { color: themeColors.danger, dash: 'dot', width: 2 }, opacity: 0.8
       },
       {
-        type: 'line',
-        xref: 'paper', x0: 0, x1: 1,
-        yref: 'y', y0: refMean, y1: refMean,
-        line: { color: '#1f77b4', dash: 'dot', width: 2 },
-        opacity: 0.8
+        type: 'line', xref: 'paper', x0: 0, x1: 1, yref: 'y', y0: refMean, y1: refMean,
+        line: { color: themeColors.primary, dash: 'dot', width: 2 }, opacity: 0.8
       }
     ];
 
@@ -243,13 +224,13 @@ export default function ConditionsDE() {
       traces: [
         {
           type: 'violin', name: testCond, y: testVals, x: Array(testVals.length).fill(gene.original),
-          legendgroup: testCond, scalegroup: 'group', side: 'positive', line: { color: '#d62728' }, 
-          meanline: { visible: false }, points: false, spanmode: 'soft', box: { visible: false } // Turned off internal meanline
+          legendgroup: testCond, scalegroup: 'group', side: 'positive', line: { color: themeColors.danger }, 
+          meanline: { visible: false }, points: false, spanmode: 'soft', box: { visible: false }
         },
         {
           type: 'violin', name: refCond, y: refVals, x: Array(refVals.length).fill(gene.original),
-          legendgroup: refCond, scalegroup: 'group', side: 'negative', line: { color: '#1f77b4' }, 
-          meanline: { visible: false }, points: false, spanmode: 'soft', box: { visible: false } // Turned off internal meanline
+          legendgroup: refCond, scalegroup: 'group', side: 'negative', line: { color: themeColors.primary }, 
+          meanline: { visible: false }, points: false, spanmode: 'soft', box: { visible: false }
         }
       ],
       shapes: meanShapes
@@ -257,14 +238,13 @@ export default function ConditionsDE() {
   };
 
   return (
-    <div className="p-6 flex flex-col gap-4 h-full bg-gray-100 overflow-y-auto">
+    <div className="p-6 flex flex-col gap-4 h-full bg-app overflow-y-auto">
       
-      {/* Top Filter Bar */}
-      <div className="bg-white p-4 border shadow-sm rounded flex flex-wrap gap-6 items-center">
+      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-6 items-center">
         <label className="text-sm font-semibold flex flex-col gap-1">
-          <span className="text-gray-500 uppercase tracking-wide text-xs">Cell Type</span>
+          <span className="text-textMuted uppercase tracking-wide text-xs">Cell Type</span>
           <select 
-            className="border border-gray-300 p-2 rounded outline-none w-64 bg-white"
+            className="border border-borderMain p-2 rounded outline-none w-64 bg-panel text-textMain focus:border-primary"
             value={selectedCellType} 
             onChange={e => { setSelectedCellType(e.target.value); setPanelGenes([null, null, null]); }}
           >
@@ -273,9 +253,9 @@ export default function ConditionsDE() {
         </label>
 
         <label className="text-sm font-semibold flex flex-col gap-1">
-          <span className="text-blue-600 uppercase tracking-wide text-xs">Pairwise Comparison</span>
+          <span className="text-primary-dark uppercase tracking-wide text-xs">Pairwise Comparison</span>
           <select 
-            className="border border-blue-400 bg-blue-50 text-blue-900 p-2 rounded outline-none w-64"
+            className="border border-primary bg-primary-light text-primary-dark p-2 rounded outline-none w-64 focus:ring-1 focus:ring-primary"
             value={selectedComparison} 
             onChange={e => { setSelectedComparison(e.target.value); setPanelGenes([null, null, null]); }}
           >
@@ -286,74 +266,75 @@ export default function ConditionsDE() {
         </label>
         
         <div className="ml-auto flex items-center gap-6 mt-4">
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer font-semibold">
+          <label className="flex items-center gap-2 text-sm text-textMuted cursor-pointer font-semibold hover:text-textMain">
             <input 
               type="checkbox" checked={filterZeros} onChange={e => setFilterZeros(e.target.checked)} 
-              className="cursor-pointer w-4 h-4"
+              className="cursor-pointer w-4 h-4 accent-primary"
             />
             Hide Zero-Expression Cells
           </label>
 
-          <InfoModal 
-            title={tabInfo.conditionsDe.title} 
-            content={tabInfo.conditionsDe.content} 
-          />
+          <InfoModal title={tabInfo.conditionsDe.title} content={tabInfo.conditionsDe.content} />
         </div>
       </div>
 
-      {/* Top Half: Volcano and Table */}
       <div className="flex gap-4 h-[350px] shrink-0">
-        <div className="w-1/2 bg-white border shadow-sm rounded p-4 flex flex-col relative">
-          <h3 className="font-bold text-gray-700 text-center mb-1">Pairwise Volcano Plot</h3>
+        <div className="w-1/2 bg-panel border border-borderLight shadow-sm rounded p-4 flex flex-col relative">
+          <h3 className="font-bold text-textMain text-center mb-1">Pairwise Volcano Plot</h3>
           <div className="flex-1 min-h-0">
             {volcanoPlot ? (
               <Plot
                 data={volcanoPlot}
-                layout={{ autosize: true, xaxis: { title: 'Log2 Fold Change', zeroline: true }, yaxis: { title: '-Log10(Adj. P-Value)', zeroline: true }, showlegend: false, margin: { l: 50, r: 20, t: 10, b: 40 } }}
+                layout={{ 
+                  autosize: true, 
+                  xaxis: { title: 'Log2 Fold Change', zeroline: true, zerolinecolor: themeColors.border }, 
+                  yaxis: { title: '-Log10(Adj. P-Value)', zeroline: true, zerolinecolor: themeColors.border }, 
+                  showlegend: false, margin: { l: 50, r: 20, t: 10, b: 40 },
+                  paper_bgcolor: themeColors.paper, plot_bgcolor: themeColors.paper, font: { color: themeColors.label }
+                }}
                 useResizeHandler={true} style={{ width: "100%", height: "100%" }}
               />
-            ) : <div className="flex justify-center items-center h-full text-gray-400">Loading Data...</div>}
+            ) : <div className="flex justify-center items-center h-full text-textMuted">Loading Data...</div>}
           </div>
         </div>
 
-        <div className="w-1/2 bg-white border shadow-sm rounded flex flex-col overflow-hidden">
-          <div className="bg-gray-100 border-b px-4 py-2">
-            <h3 className="font-bold text-sm text-gray-700">Top DE Genes for {selectedCellType}</h3>
+        <div className="w-1/2 bg-panel border border-borderLight shadow-sm rounded flex flex-col overflow-hidden">
+          <div className="bg-app border-b border-borderMain px-4 py-2">
+            <h3 className="font-bold text-sm text-textMain">Top DE Genes for {selectedCellType}</h3>
           </div>
           <div className="flex-1 overflow-auto p-4">
             {summaryTable.length > 0 ? (
               <div className="flex flex-col gap-6">
                 <div>
-                  <h4 className="text-sm font-bold text-red-600 mb-2 border-b pb-1">Upregulated in {testCond}</h4>
+                  <h4 className="text-sm font-bold text-danger-dark mb-2 border-b border-borderLight pb-1">Upregulated in {testCond}</h4>
                   <div className="flex flex-wrap gap-2">
                     {summaryTable[0]["Top Upregulated"].replace(/[\[\]']/g, '').split(',').map(g => (
-                      <span key={g} className="bg-red-50 text-red-700 border border-red-200 px-2 py-1 rounded text-sm">{g.trim()}</span>
+                      <span key={g} className="bg-danger-light text-danger-dark border border-danger-light px-2 py-1 rounded text-sm">{g.trim()}</span>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-blue-600 mb-2 border-b pb-1">Upregulated in {refCond}</h4>
+                  <h4 className="text-sm font-bold text-primary-dark mb-2 border-b border-borderLight pb-1">Upregulated in {refCond}</h4>
                   <div className="flex flex-wrap gap-2">
                     {summaryTable[0]["Top Downregulated"].replace(/[\[\]']/g, '').split(',').map(g => (
-                      <span key={g} className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded text-sm">{g.trim()}</span>
+                      <span key={g} className="bg-primary-light text-primary-dark border border-primary-light px-2 py-1 rounded text-sm">{g.trim()}</span>
                     ))}
                   </div>
                 </div>
               </div>
-            ) : <div className="text-gray-400 text-center mt-10">No summary data available.</div>}
+            ) : <div className="text-textMuted text-center mt-10">No summary data available.</div>}
           </div>
         </div>
       </div>
 
-      {/* Bottom Half: 3-Column Grid of Gene Panels */}
       <div className="grid grid-cols-3 gap-4 flex-1">
         {panelGenes.map((gene, index) => {
           const plotData = createSingleSplitViolin(gene);
           
           return (
-            <div key={index} className="bg-white border shadow-sm rounded p-3 flex flex-col min-h-[300px]">
+            <div key={index} className="bg-panel border border-borderLight shadow-sm rounded p-3 flex flex-col min-h-[300px]">
               <div className="flex justify-between items-center mb-2 z-10">
-                <span className="font-bold text-xs text-gray-500 uppercase">Panel {index + 1}</span>
+                <span className="font-bold text-xs text-textMuted uppercase">Panel {index + 1}</span>
                 <SearchableSelect 
                   options={availableGenes} 
                   value={gene} 
@@ -364,23 +345,24 @@ export default function ConditionsDE() {
               
               <div className="flex-1 relative">
                 {!gene ? (
-                  <div className="flex justify-center items-center h-full text-gray-400 text-sm">Select a gene above to view distribution</div>
+                  <div className="flex justify-center items-center h-full text-textMuted text-sm">Select a gene above to view distribution</div>
                 ) : plotData ? (
                   <Plot
-                    data={plotData.traces} // Inject the traces
+                    data={plotData.traces} 
                     layout={{
                       autosize: true,
                       violinmode: 'overlay',
-                      shapes: plotData.shapes, // Inject the full-width mean lines
+                      shapes: plotData.shapes, 
                       xaxis: { showticklabels: false, automargin: true },
                       yaxis: { title: index === 0 ? 'Log Expression' : '', automargin: true, zeroline: false },
                       showlegend: false,
-                      margin: { l: index === 0 ? 50 : 30, r: 20, t: 10, b: 20 }
+                      margin: { l: index === 0 ? 50 : 30, r: 20, t: 10, b: 20 },
+                      paper_bgcolor: themeColors.paper, plot_bgcolor: themeColors.paper, font: { color: themeColors.label }
                     }}
                     useResizeHandler={true} style={{ width: "100%", height: "100%" }}
                   />
                 ) : (
-                  <div className="flex justify-center items-center h-full text-gray-400 text-sm">Loading {gene.original}...</div>
+                  <div className="flex justify-center items-center h-full text-textMuted text-sm">Loading {gene.original}...</div>
                 )}
               </div>
             </div>
