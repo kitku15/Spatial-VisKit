@@ -362,7 +362,10 @@ export default function DEAnalysis() {
                         automargin: true,
                       },
                       yaxis: {
-                        title: { text: "Expression", standoff: 10 },
+                        title: {
+                          text: "Log Normalized Expression",
+                          standoff: 10,
+                        },
                         automargin: true,
                         zeroline: false,
                       },

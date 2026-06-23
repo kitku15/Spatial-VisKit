@@ -533,9 +533,19 @@ export default function ConditionsDE() {
                       autosize: true,
                       violinmode: "overlay",
                       shapes: plotData.shapes,
-                      xaxis: { showticklabels: false, automargin: true },
+                      xaxis: {
+                        showticklabels: false,
+                        title: { text: "Conditions", standoff: 10 },
+                        automargin: true,
+                      },
                       yaxis: {
-                        title: index === 0 ? "Log Expression" : "",
+                        title:
+                          index === 0
+                            ? {
+                                text: "Log Normalized Expression",
+                                standoff: 10,
+                              }
+                            : "",
                         automargin: true,
                         zeroline: false,
                       },

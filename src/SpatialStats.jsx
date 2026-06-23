@@ -131,9 +131,22 @@ export default function SpatialStats({ n, r }) {
           layout={{
             title: "Neighborhood Enrichment (Z-Scores)",
             autosize: true,
-            xaxis: { tickangle: 45 },
-            yaxis: { autorange: "reversed" },
-            margin: { l: 100, b: 100 },
+            xaxis: {
+              title: { text: "Cell Type", standoff: 20 },
+              tickangle: 45,
+              automargin: true,
+              color: themeColors.label,
+              gridcolor: themeColors.stroke,
+            },
+            yaxis: {
+              title: { text: "Cell Type", standoff: 20 },
+              autorange: "reversed",
+              automargin: true,
+              color: themeColors.label,
+              gridcolor: themeColors.stroke,
+            },
+            // Greatly increased left and bottom margins for long cell type names
+            margin: { l: 220, b: 220, t: 50, r: 20 },
             paper_bgcolor: themeColors.paper,
             plot_bgcolor: themeColors.paper,
             font: { color: themeColors.label },
@@ -204,12 +217,22 @@ export default function SpatialStats({ n, r }) {
             layout={{
               title: `Cross-PCF: Cluster ${pcfClusterA} vs Cluster ${pcfClusterB}`,
               autosize: true,
-              xaxis: { title: "Radius r (µm)", gridcolor: themeColors.stroke },
-              yaxis: {
-                title: "g(r)",
-                rangemode: "tozero",
+              xaxis: {
+                title: { text: "Distance / Radius r (µm)", standoff: 20 },
+                automargin: true,
+                color: themeColors.label,
                 gridcolor: themeColors.stroke,
+                zerolinecolor: themeColors.stroke,
               },
+              yaxis: {
+                title: { text: "Pair Correlation Function g(r)", standoff: 20 },
+                rangemode: "tozero",
+                automargin: true,
+                color: themeColors.label,
+                gridcolor: themeColors.stroke,
+                zerolinecolor: themeColors.stroke,
+              },
+              margin: { l: 80, b: 80, t: 50, r: 20 },
               shapes: [
                 {
                   type: "line",
@@ -291,8 +314,21 @@ export default function SpatialStats({ n, r }) {
             layout={{
               title: `Distribution of ${activeMorphMetric} by Cell Type`,
               autosize: true,
-              yaxis: { title: activeMorphMetric, zeroline: false },
-              xaxis: { title: "Cell Type" },
+              xaxis: {
+                title: { text: "Cell Type (Clusters)", standoff: 20 },
+                tickangle: 45,
+                automargin: true,
+                color: themeColors.label,
+                gridcolor: themeColors.stroke,
+              },
+              yaxis: {
+                title: { text: activeMorphMetric, standoff: 20 },
+                zeroline: false,
+                automargin: true,
+                color: themeColors.label,
+                gridcolor: themeColors.stroke,
+              },
+              margin: { l: 80, b: 150, t: 50, r: 20 },
               showlegend: true,
               legend: { title: { text: "Cell Types" } },
               paper_bgcolor: themeColors.paper,
@@ -360,6 +396,19 @@ export default function SpatialStats({ n, r }) {
                 title: "Network Centrality per Cluster",
                 barmode: "group",
                 autosize: true,
+                xaxis: {
+                  automargin: true,
+                  color: themeColors.label,
+                  gridcolor: themeColors.stroke,
+                },
+                yaxis: {
+                  title: { text: "Centrality Score", standoff: 20 },
+                  automargin: true,
+                  color: themeColors.label,
+                  gridcolor: themeColors.stroke,
+                  zerolinecolor: themeColors.stroke,
+                },
+                margin: { l: 80, b: 50, t: 50, r: 20 },
                 paper_bgcolor: themeColors.paper,
                 plot_bgcolor: themeColors.paper,
                 font: { color: themeColors.label },
@@ -375,12 +424,25 @@ export default function SpatialStats({ n, r }) {
               data={moranTraces}
               layout={{
                 title: "Moran's I Spatial Autocorrelation (Genes)",
-                xaxis: {
-                  title:
-                    "Moran's I Statistic (Higher = More spatially patterned)",
-                },
-                yaxis: { title: "-log10(p-value)" },
                 autosize: true,
+                xaxis: {
+                  title: {
+                    text: "Moran's I Statistic",
+                    standoff: 20,
+                  },
+                  automargin: true,
+                  color: themeColors.label,
+                  gridcolor: themeColors.stroke,
+                  zerolinecolor: themeColors.stroke,
+                },
+                yaxis: {
+                  title: { text: "-log10(p-value)", standoff: 20 },
+                  automargin: true,
+                  color: themeColors.label,
+                  gridcolor: themeColors.stroke,
+                  zerolinecolor: themeColors.stroke,
+                },
+                margin: { l: 80, b: 80, t: 50, r: 20 },
                 paper_bgcolor: themeColors.paper,
                 plot_bgcolor: themeColors.paper,
                 font: { color: themeColors.label },
