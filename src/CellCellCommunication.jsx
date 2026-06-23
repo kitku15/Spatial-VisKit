@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import VitessceCCC from './VitessceCCC';
+import InfoModal from './InfoModal';
+import { tabInfo } from './infoHelper';
 
 export default function CellCellCommunication({ n, r }) {
   const [rawData, setRawData] = useState([]);
@@ -358,13 +360,13 @@ export default function CellCellCommunication({ n, r }) {
 
         <button 
           onClick={handleRefresh}
-          className="bg-green-100 border border-green-600 text-green-700 font-semibold px-4 py-2 rounded shadow hover:bg-green-200 transition h-[38px] mr-2"
+          className="bg-green-100 border border-green-600 text-green-700 font-semibold px-4 py-2 rounded shadow hover:bg-green-200 transition h-[38px]"
         >
           Refresh Data
         </button>
 
         {/* Visual Settings Group */}
-        <div className="flex gap-4 border-l border-gray-300 pl-4">
+        <div className="flex gap-4 border-l border-gray-300 pl-4 ml-2">
           <label className="flex-1 min-w-[100px] flex flex-col">
             <span className="text-xs font-semibold text-blue-600 mb-1 uppercase tracking-wider">Min Cells</span>
             <input 
@@ -387,6 +389,13 @@ export default function CellCellCommunication({ n, r }) {
               <option value="Interaction">Ligand-Receptor</option>
             </select>
           </label>
+        </div>
+
+        <div className="ml-auto flex items-center">
+          <InfoModal
+            title={tabInfo.ccc.title}
+            content={tabInfo.ccc.content}
+          />
         </div>
 
       </div>

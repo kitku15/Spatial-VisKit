@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
+import InfoModal from './InfoModal';
+import { tabInfo } from './infoHelper';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -89,23 +91,29 @@ export default function QualityControl() {
         <div>
           <h2 className="text-xl font-bold text-gray-800">Pre-Filter Quality Control Metrics</h2>
           <p className="text-sm text-gray-500">
-            Interactive distributions of cell metrics. Red dashed lines indicate cutoff thresholds.
+            Distributions of raw cell metrics. Red dashed lines indicate cutoff thresholds.
           </p>
         </div>
         
-        {/* New Slide Dropdown UI */}
-        <label className="text-sm font-semibold flex items-center gap-2">
-          <span className="text-gray-600">Slide:</span>
-          <select 
-            className="border border-gray-400 rounded px-3 py-1.5 bg-white font-normal outline-none focus:border-blue-500" 
-            value={selectedSlide} 
-            onChange={(e) => setSelectedSlide(e.target.value)}
-          >
-            {availableSlides.map(s => (
-              <option key={s} value={s}>{s === "All" ? "All Slides (Aggregate)" : s}</option>
-            ))}
-          </select>
-        </label>
+        <div className="flex items-center gap-4">
+          <label className="text-sm font-semibold flex items-center gap-2">
+            <span className="text-gray-600">Slide:</span>
+            <select 
+              className="border border-gray-400 rounded px-3 py-1.5 bg-white font-normal outline-none focus:border-blue-500" 
+              value={selectedSlide} 
+              onChange={(e) => setSelectedSlide(e.target.value)}
+            >
+              {availableSlides.map(s => (
+                <option key={s} value={s}>{s === "All" ? "All Slides (Aggregate)" : s}</option>
+              ))}
+            </select>
+          </label>
+
+          <InfoModal 
+            title={tabInfo.qc.title} 
+            content={tabInfo.qc.content} 
+          />
+        </div>
       </div>
 
       {/* Plot Grid */}

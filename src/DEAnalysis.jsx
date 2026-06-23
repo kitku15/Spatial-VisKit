@@ -3,6 +3,8 @@ import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
 import * as d3 from 'd3';
 import { largeColorPalette } from './config';
+import InfoModal from './InfoModal';
+import { tabInfo } from './infoHelper';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -214,6 +216,13 @@ export default function DEAnalysis() {
             ))}
           </select>
         </label>
+
+        <div className="ml-auto flex items-center">
+          <InfoModal 
+            title={tabInfo.deAnalysis.title} 
+            content={tabInfo.deAnalysis.content} 
+          />
+        </div>
       </div>
 
       <div className="flex gap-4 flex-1 min-h-0">

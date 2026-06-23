@@ -4,6 +4,8 @@ import { Vitessce } from 'vitessce';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
 import { API_BASE_URL, ZARR_DIR, EXTRA_OBS_SETS, SPATIAL_KEY, ANNOTATION_PREFIX, VITESSCE_DOT_SIZE, ANALYSIS_NAME, largeColorPalette } from './config';
+import InfoModal from './InfoModal';
+import { tabInfo } from './infoHelper';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -300,18 +302,25 @@ export default function VitessceViewer({ n, r }) {
           </select>
         </label>
 
-        {/* Refresh plot button */}
-        <button
-          onClick={() => setAppliedFilters({
-            slide: selectedSlide,
-            sample: selectedSample,
-            category: activeCategory,
-            viewMode: spatialViewMode
-          })}
-          className="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-1.5 px-4 rounded shadow transition"
-        >
-          Refresh Plot
-        </button>
+        <div className="ml-auto flex items-center gap-4">
+          {/* Refresh plot button */}
+          <button
+            onClick={() => setAppliedFilters({
+              slide: selectedSlide,
+              sample: selectedSample,
+              category: activeCategory,
+              viewMode: spatialViewMode
+            })}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-1.5 px-4 rounded shadow transition"
+          >
+            Refresh Plot
+          </button>
+
+          <InfoModal 
+            title={tabInfo.interactive.title} 
+            content={tabInfo.interactive.content} 
+          />
+        </div>
       </div>
 
       {/* Main Plot Area */}

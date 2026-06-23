@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
 import * as d3 from 'd3';
+import InfoModal from './InfoModal';
+import { tabInfo } from './infoHelper';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -283,13 +285,20 @@ export default function ConditionsDE() {
           </select>
         </label>
         
-        <label className="flex items-center gap-2 text-sm text-gray-600 ml-auto cursor-pointer font-semibold mt-4">
-          <input 
-            type="checkbox" checked={filterZeros} onChange={e => setFilterZeros(e.target.checked)} 
-            className="cursor-pointer w-4 h-4"
+        <div className="ml-auto flex items-center gap-6 mt-4">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer font-semibold">
+            <input 
+              type="checkbox" checked={filterZeros} onChange={e => setFilterZeros(e.target.checked)} 
+              className="cursor-pointer w-4 h-4"
+            />
+            Hide Zero-Expression Cells
+          </label>
+
+          <InfoModal 
+            title={tabInfo.conditionsDe.title} 
+            content={tabInfo.conditionsDe.content} 
           />
-          Hide Zero-Expression Cells
-        </label>
+        </div>
       </div>
 
       {/* Top Half: Volcano and Table */}

@@ -4,6 +4,8 @@ import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
 import VitessceTF from './VitessceTF';
 import { API_BASE_URL, ANALYSIS_NAME } from './config';
+import InfoModal from './InfoModal';
+import { tabInfo } from './infoHelper';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -154,12 +156,18 @@ export default function TranscriptionFactor({ n, r }) {
               step="0.01" 
               value={sliderValue} 
               onChange={(e) => setSliderValue(e.target.value)}
-              // Only apply to Vitessce when the user finishes dragging
               onMouseUp={() => setMinColorRange(parseFloat(sliderValue))}
               onTouchEnd={() => setMinColorRange(parseFloat(sliderValue))}
               className="cursor-pointer"
             />
           </label>
+        </div>
+
+        <div className="ml-auto flex items-center">
+          <InfoModal
+            title={tabInfo.tf.title}
+            content={tabInfo.tf.content}
+          />
         </div>
       </div>
 

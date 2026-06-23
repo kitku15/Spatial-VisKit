@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
 import { ANALYSIS_NAME } from './config';
+import InfoModal from './InfoModal';
+import { tabInfo } from './infoHelper';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -349,6 +351,11 @@ export default function MultiplexGeneOverlay() {
               <input type="checkbox" checked={showBackground} onChange={e => setShowBackground(e.target.checked)} className="cursor-pointer" />
               Show Background Cells
             </label>
+
+            <InfoModal
+              title={tabInfo.multiplex.title}
+              content={tabInfo.multiplex.content}
+            />
           </div>
         </div>
 

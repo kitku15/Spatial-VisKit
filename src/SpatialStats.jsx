@@ -4,7 +4,9 @@ import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
 import * as d3 from 'd3';
 import { ANALYSIS_NAME, largeColorPalette } from './config';
-import VitessceSpatialStats from './VitessceSpatialStats'; // IMPORT NEW COMPONENT
+import VitessceSpatialStats from './VitessceSpatialStats'; 
+import InfoModal from './InfoModal';
+import { tabInfo } from './infoHelper';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -296,21 +298,28 @@ export default function SpatialStats({ n, r }) {
           </label>
         </div>
 
-        <div className="flex gap-2 bg-gray-200 p-1 rounded">
-          {[
-            { id: "nhood", label: "Neighborhoods" },
-            { id: "pcf", label: "Distances (PCF)" },
-            { id: "morph", label: "Morphology" },
-            { id: "centrality", label: "Autocorrelation" }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded text-sm font-semibold transition ${activeTab === tab.id ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-300'}`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-4 ml-auto">
+          <div className="flex gap-2 bg-gray-200 p-1 rounded">
+            {[
+              { id: "nhood", label: "Neighborhoods" },
+              { id: "pcf", label: "Distances (PCF)" },
+              { id: "morph", label: "Morphology" },
+              { id: "centrality", label: "Autocorrelation" }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2 rounded text-sm font-semibold transition ${activeTab === tab.id ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:bg-gray-300'}`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <InfoModal
+            title={tabInfo.stats.title}
+            content={tabInfo.stats.content}
+          />
         </div>
       </div>
 

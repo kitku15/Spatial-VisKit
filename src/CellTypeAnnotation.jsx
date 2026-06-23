@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
+import InfoModal from './InfoModal';
+import { tabInfo } from './infoHelper';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -177,12 +179,20 @@ const CellTypeAnnotation = ({ availableColumns }) => {
       <div className="bg-white p-4 border shadow-sm rounded">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Annotation Flow Comparison</h2>
-          <button 
-            onClick={addColumn}
-            className="bg-green-100 border border-green-600 text-green-700 font-semibold px-3 py-1 rounded text-sm hover:bg-green-200 transition"
-          >
-            + Add Flow Step
-          </button>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={addColumn}
+              className="bg-green-100 border border-green-600 text-green-700 font-semibold px-3 py-1 rounded text-sm hover:bg-green-200 transition"
+            >
+              + Add Flow Step
+            </button>
+            <div className="pl-4 border-l border-gray-300 flex items-center">
+              <InfoModal
+                title={tabInfo.annotation.title}
+                content={tabInfo.annotation.content}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-4 items-end">
