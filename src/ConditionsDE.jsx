@@ -250,7 +250,7 @@ export default function ConditionsDE() {
         line: { color: '#d62728' }, 
         meanline: { visible: true },
         points: false,               // Hides the ugly outlier dots
-        spanmode: 'hard',            // Stops the violin from curving below zero
+        spanmode: 'soft',            // Stops the violin from curving below zero
         box: { visible: false },     // Removes the crushed boxplot
         showlegend: traces.findIndex(t => t.name === testCond) === -1
       });
@@ -267,7 +267,7 @@ export default function ConditionsDE() {
         line: { color: '#1f77b4' }, 
         meanline: { visible: true },
         points: false,              
-        spanmode: 'hard',            
+        spanmode: 'soft',            
         box: { visible: false },    
         showlegend: traces.findIndex(t => t.name === refCond) === -1
       });

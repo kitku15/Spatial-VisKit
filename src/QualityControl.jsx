@@ -118,7 +118,6 @@ export default function QualityControl() {
         <div className="bg-white p-4 border shadow-sm rounded h-96 flex flex-col">
           <h3 className="font-bold text-gray-700 text-center mb-2">Unique Genes per Cell</h3>
           <div className="bg-white p-4 border shadow-sm rounded h-96 flex flex-col">
-          <h3 className="font-bold text-gray-700 text-center mb-2">Unique Genes per Cell</h3>
           <div className="flex-1 min-h-0">
             {makePlot('n_genes_by_counts', '#2ca02c', 'Genes', [activeThresholds?.min_genes])}
           </div>

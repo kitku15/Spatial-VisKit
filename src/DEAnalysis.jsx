@@ -2,18 +2,10 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
 import * as d3 from 'd3';
+import { largeColorPalette } from './config';
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
-
-// --- Shared Color Palette (Matches Vitessce) ---
-const largeColorPalette = [
-  "#be84bf", "#ffff34", "#e41c1e", "#b5df6e", "#65c1a4", "#d95e01",
-  "#135561", "#984da3", "#ff8045", "#e78ac3", "#2d81b9", "#050582",
-  "#ffd92e", "#fb9a74", "#92a5cd", "#e6aa02", "#ff7f00", "#fb9998",
-  "#f0027f", "#ff50a7", "#746fb2", "#199d76", "#5c5c0d", "#fc5d5d",
-  "#77b975", "#bf5c18", "#36a230", "#4084bb", "#8e2a2a", "#b1df89"
-];
 
 // --- Searchable Dropdown ---
 function SearchableSelect({ options, value, onChange, placeholder }) {
@@ -69,9 +61,7 @@ export default function DEAnalysis() {
   const [availableGenes, setAvailableGenes] = useState([]);
   
   const [gene1, setGene1] = useState(null);
-  const [gene2, setGene2] = useState(null);
   const [expr1, setExpr1] = useState(null);
-  const [expr2, setExpr2] = useState(null);
 
   // 1. Initial Data Load
   useEffect(() => {
@@ -111,9 +101,8 @@ export default function DEAnalysis() {
     if (clusterRow && clusterRow["Top Genes"] && availableGenes.length > 0) {
         const topStr = clusterRow["Top Genes"].replace(/[\[\]']/g, '');
         const topArr = topStr.split(',').map(s => s.trim());
-        if (topArr.length >= 2) {
+        if (topArr.length >= 1) {
             setGene1(availableGenes.find(g => g.original === topArr[0]) || availableGenes[0]);
-            setGene2(availableGenes.find(g => g.original === topArr[1]) || availableGenes[1]);
         }
     }
 
@@ -128,10 +117,6 @@ export default function DEAnalysis() {
   useEffect(() => {
     if (gene1) fetch(`data/genes/${gene1.safe}.json`).then(r => r.json()).then(setExpr1);
   }, [gene1]);
-
-  useEffect(() => {
-    if (gene2) fetch(`data/genes/${gene2.safe}.json`).then(r => r.json()).then(setExpr2);
-  }, [gene2]);
 
   // --- Generate Consistent Colors for the Clusters ---
   const clusterColorMap = useMemo(() => {
@@ -184,7 +169,7 @@ export default function DEAnalysis() {
     for (let i = 0; i < labelsArray.length; i++) {
       const cluster = labelsArray[i];
       if (!clusters[cluster]) clusters[cluster] = [];
-      clusters[cluster].push(exprArray[i]);
+      if (exprArray[i] > 0) clusters[cluster].push(exprArray[i]);
     }
 
     const sortedLabels = Object.keys(clusters).sort();
@@ -233,7 +218,7 @@ export default function DEAnalysis() {
 
       <div className="flex gap-4 flex-1 min-h-0">
         
-        <div className="w-1/2 bg-white border shadow-sm rounded p-4 flex flex-col">
+        <div className="w-1/3 bg-white border shadow-sm rounded p-4 flex flex-col">
           <h3 className="font-bold text-gray-700 text-center mb-1">Volcano Plot</h3>
           <p className="text-xs text-center text-gray-500 mb-2 truncate">Cluster <b title={selectedCluster}>{selectedCluster}</b> vs All Other Cells</p>
           <div className="flex-1 relative">
@@ -252,10 +237,10 @@ export default function DEAnalysis() {
           </div>
         </div>
 
-        <div className="w-1/2 flex flex-col gap-4">
+        <div className="w-2/3 flex flex-col gap-4">
           
           <div className="flex gap-4 h-1/2">
-            <div className="w-1/2 bg-white border shadow-sm rounded p-3 flex flex-col">
+            <div className="w-full bg-white border shadow-sm rounded p-3 flex flex-col">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-xs text-gray-700 mr-2">Gene 1:</h3>
                 <SearchableSelect options={availableGenes} value={gene1} onChange={setGene1} placeholder="Search..." />
@@ -265,31 +250,10 @@ export default function DEAnalysis() {
                   <Plot
                     data={createViolinPlot(gene1, expr1)}
                     layout={{
-                      autosize: true, showlegend: false,
+                      autosize: true, showlegend: true,
                       xaxis: { showticklabels: false, title: { text: 'Cell Clusters', standoff: 10 }, automargin: true },
                       yaxis: { title: { text: 'Expression', standoff: 10 }, automargin: true, zeroline: false },
-                      margin: { l: 60, r: 10, t: 10, b: 50 }
-                    }}
-                    useResizeHandler={true} style={{ width: "100%", height: "100%" }}
-                  />
-                ) : <span className="text-xs text-gray-400">Loading...</span>}
-              </div>
-            </div>
-
-            <div className="w-1/2 bg-white border shadow-sm rounded p-3 flex flex-col">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-bold text-xs text-gray-700 mr-2">Gene 2:</h3>
-                <SearchableSelect options={availableGenes} value={gene2} onChange={setGene2} placeholder="Search..." />
-              </div>
-              <div className="flex-1 relative">
-                {expr2 ? (
-                  <Plot
-                    data={createViolinPlot(gene2, expr2)}
-                    layout={{
-                      autosize: true, showlegend: false,
-                      xaxis: { showticklabels: false, title: { text: 'Cell Clusters', standoff: 10 }, automargin: true },
-                      yaxis: { title: { text: 'Expression', standoff: 10 }, automargin: true, zeroline: false },
-                      margin: { l: 60, r: 10, t: 10, b: 50 }
+                      margin: { l: 60, r: 120, t: 10, b: 50 }
                     }}
                     useResizeHandler={true} style={{ width: "100%", height: "100%" }}
                   />

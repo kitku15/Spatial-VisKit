@@ -1,24 +1,16 @@
+// ./SpatialStats.jsx
 import React, { useState, useEffect } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import factory from 'react-plotly.js/factory';
 import * as d3 from 'd3';
-import { ANALYSIS_NAME } from './config';
+import { ANALYSIS_NAME, largeColorPalette } from './config';
+import VitessceSpatialStats from './VitessceSpatialStats'; // IMPORT NEW COMPONENT
 
 const createPlotlyComponent = typeof factory === 'function' ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
 
-const largeColorPalette = [
-  "#be84bf", "#ffff34", "#e41c1e", "#b5df6e", "#65c1a4", "#d95e01",
-  "#b3b3b3", "#984da3", "#ff8045", "#e78ac3", "#2d81b9", "#050582",
-  "#ffd92e", "#fb9a74", "#92a5cd", "#e6aa02", "#ff7f00", "#fb9998",
-  "#f0027f", "#ff50a7", "#746fb2", "#199d76", "#8e8e8e", "#fc5d5d",
-  "#77b975", "#bf5c18", "#36a230", "#4084bb", "#989898", "#b1df89",
-  "#bcb8d9", "#a55527", "#cd0000", "#006300", "#ff0f0d", "#e5c493",
-  "#fb7f71", "#7fc97f", "#7eeec9", "#a6d854", "#8dd3c7", "#f781bf",
-  "#8b8878", "#fdb462"
-];
-
-export default function SpatialStats() {
+// ADD PROPS n AND r HERE
+export default function SpatialStats({ n, r }) {
   const [activeTab, setActiveTab] = useState("nhood");
   
   // --- Slide & Sample Selection State ---
@@ -79,21 +71,17 @@ export default function SpatialStats() {
 
     const basePath = `data/spatial_stats/${selectedSample}`;
 
-    // Fetch Neighborhoods
     fetch(`${basePath}/nhood_enrichment_${selectedSample}.json`)
       .then(r => r.ok ? r.json() : null)
       .then(d => setNhoodData(d)).catch(() => setNhoodData(null));
 
-    // Fetch Centrality
     fetch(`${basePath}/centrality_scores_${selectedSample}.json`)
       .then(r => r.ok ? r.json() : null)
       .then(d => setCentralityData(d)).catch(() => setCentralityData(null));
 
-    // Fetch Moran's I (CSV)
     d3.csv(`${basePath}/moranI_results_${selectedSample}.csv`)
       .then(d => setMoranData(d)).catch(() => setMoranData(null));
 
-    // Fetch Cross PCF
     fetch(`${basePath}/cross_pcf_all.json`)
       .then(r => r.ok ? r.json() : null)
       .then(d => {
@@ -105,15 +93,12 @@ export default function SpatialStats() {
         }
       }).catch(() => setPcfData(null));
 
-    // Fetch Morphometrics (CSV)
     d3.csv(`${basePath}/morphometrics.csv`)
       .then(d => setMorphData(d)).catch(() => setMorphData(null));
 
   }, [selectedSample]);
 
-
   // --- RENDERERS FOR EACH TAB ---
-
   const renderNeighborhoods = () => {
     if (!nhoodData) return <div className="p-4 text-gray-500">Loading or no Neighborhood Enrichment data found.</div>;
     return (
@@ -125,7 +110,7 @@ export default function SpatialStats() {
             y: nhoodData.clusters,
             type: 'heatmap',
             colorscale: 'RdBu',
-            zmid: 0 // Centers the color scale at 0 (white)
+            zmid: 0 
           }]}
           layout={{ 
             title: 'Neighborhood Enrichment (Z-Scores)', 
@@ -144,10 +129,7 @@ export default function SpatialStats() {
   const renderDistances = () => {
     if (!pcfData) return <div className="p-4 text-gray-500">Loading or no Cross-PCF data found.</div>;
     
-    // Extract unique clusters from the "pairs" keys
     const clusters = Array.from(new Set(Object.keys(pcfData.pairs).flatMap(k => k.split("|")))).sort();
-    
-    // PCF is symmetric, so we check both "A|B" and "B|A"
     const pairKey1 = `${pcfClusterA}|${pcfClusterB}`;
     const pairKey2 = `${pcfClusterB}|${pcfClusterA}`; 
     const yValues = pcfData.pairs[pairKey1] || pcfData.pairs[pairKey2] || [];
@@ -191,32 +173,23 @@ export default function SpatialStats() {
     );
   };
 
-    const renderMorphometrics = () => {
+  const renderMorphometrics = () => {
     if (!morphData || morphData.length === 0) return <div className="p-4 text-gray-500">Loading or no Morphometrics data found.</div>;
     
-    // Get all column names except the Cell_ID and Cluster
     const metrics = Object.keys(morphData[0]).filter(k => k !== "Cell_ID" && k !== "Cluster");
-    
-    // Extract unique clusters from the data and sort them
     const uniqueClusters = Array.from(new Set(morphData.map(d => d.Cluster))).filter(Boolean).sort();
 
-    // Create a separate Plotly trace for EACH cluster
     const violinTraces = uniqueClusters.map((clusterName, index) => {
-      // Filter data for this specific cluster
       const clusterData = morphData.filter(d => d.Cluster === clusterName);
-      
-      // Extract the numerical values for the currently selected metric
       const metricValues = clusterData.map(d => parseFloat(d[activeMorphMetric])).filter(v => !isNaN(v));
 
       return {
         y: metricValues,
         type: 'violin',
-        name: `Cluster ${clusterName}`, // This name appears in the legend
+        name: `Cluster ${clusterName}`,
         box: { visible: true },
         meanline: { visible: true },
-        marker: { 
-          color: largeColorPalette[index % largeColorPalette.length] 
-        }
+        marker: { color: largeColorPalette[index % largeColorPalette.length] }
       };
     });
 
@@ -239,7 +212,7 @@ export default function SpatialStats() {
               autosize: true,
               yaxis: { title: activeMorphMetric, zeroline: false },
               xaxis: { title: "Cell Type" },
-              showlegend: true, // Enables the toggle interface
+              showlegend: true, 
               legend: { title: { text: 'Cell Types' } }
             }}
             useResizeHandler={true}
@@ -255,15 +228,10 @@ export default function SpatialStats() {
 
     const centralityTraces = centralityData ? Object.keys(centralityData).map((cluster, index) => ({
       x: ['Degree', 'Closeness'],
-      y: [
-        centralityData[cluster]['degree_centrality'],
-        centralityData[cluster]['closeness_centrality'],
-      ],
+      y: [centralityData[cluster]['degree_centrality'], centralityData[cluster]['closeness_centrality']],
       name: `Cluster ${cluster}`,
       type: 'bar',
-      marker: { 
-        color: largeColorPalette[index % largeColorPalette.length] 
-      }
+      marker: { color: largeColorPalette[index % largeColorPalette.length] }
     })) : [];
 
     const moranTraces = moranData ? [{
@@ -272,12 +240,7 @@ export default function SpatialStats() {
       text: moranData.map(d => d['']), 
       mode: 'markers',
       type: 'scatter',
-      marker: { 
-        color: moranData.map(d => parseFloat(d.I)), 
-        colorscale: 'Viridis', 
-        showscale: true,
-        size: 8
-      }
+      marker: { color: moranData.map(d => parseFloat(d.I)), colorscale: 'Viridis', showscale: true, size: 8 }
     }] : [];
 
     return (
@@ -316,7 +279,6 @@ export default function SpatialStats() {
       {/* Top Header & Tab Navigation */}
       <div className="bg-white p-4 border shadow-sm rounded flex flex-col xl:flex-row justify-between items-center gap-4">
         
-        {/* Slide & Sample Selectors */}
         <div className="flex flex-wrap gap-4 items-center">
           <h2 className="text-xl font-bold text-gray-800 border-r pr-4">Spatial Analytics</h2>
           
@@ -334,7 +296,6 @@ export default function SpatialStats() {
           </label>
         </div>
 
-        {/* Tab Buttons */}
         <div className="flex gap-2 bg-gray-200 p-1 rounded">
           {[
             { id: "nhood", label: "Neighborhoods" },
@@ -353,25 +314,39 @@ export default function SpatialStats() {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="bg-white border shadow-sm rounded flex-1 overflow-hidden relative">
-        {(!selectedSample || selectedSample === "All") ? (
-           <div className="flex items-center justify-center h-full text-gray-500">
-             <p className="p-6 text-center">
-               <span className="text-2xl block mb-2">⚠️</span>
-               Spatial Statistics are calculated at the tissue level.<br/> 
-               Please select a specific <b>Sample</b> from the dropdown above to view statistics.
-             </p>
-           </div>
-        ) : (
-          <>
+      {/* Main SPLIT Content Area */}
+      {(!selectedSample || selectedSample === "All") ? (
+         <div className="flex items-center justify-center h-full text-gray-500 bg-white border shadow-sm rounded flex-1">
+           <p className="p-6 text-center">
+             <span className="text-2xl block mb-2">⚠️</span>
+             Spatial Statistics are calculated at the tissue level.<br/> 
+             Please select a specific <b>Sample</b> from the dropdown above to view statistics.
+           </p>
+         </div>
+      ) : (
+        <div className="flex-1 w-full flex gap-4 overflow-hidden">
+          
+          {/* Left Side: Stats Plots */}
+          <div className="flex-1 min-w-0 bg-white border shadow-sm rounded flex flex-col overflow-hidden relative">
             {activeTab === "nhood" && renderNeighborhoods()}
             {activeTab === "pcf" && renderDistances()}
             {activeTab === "morph" && renderMorphometrics()}
             {activeTab === "centrality" && renderAutocorrelation()}
-          </>
-        )}
-      </div>
+          </div>
+          
+          {/* Right Side: Vitessce Spatial Map */}
+          <div className="flex-1 min-w-0 border border-gray-200 rounded relative bg-white">
+            <VitessceSpatialStats 
+              n={n} 
+              r={r} 
+              selectedSlide={selectedSlide} 
+              selectedSample={selectedSample} 
+              activeTab={activeTab}
+            />
+          </div>
+
+        </div>
+      )}
     </div>
   );
 }

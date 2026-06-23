@@ -200,7 +200,7 @@ export default function App() {
           <Route path="/qc" element={<QualityControl />} />
           <Route path="/interactive" element={isReady ? <VitessceViewer n={appliedN} r={appliedR} /> : <div className="p-6">Loading data from Zarr...</div>} />
           <Route path="/multiplex" element={<MultiplexGeneOverlay />} />
-          <Route path="/stats" element={<SpatialStats />} />
+          <Route path="/stats" element={isReady ? <SpatialStats n={appliedN} r={appliedR} /> : <div className="p-6">Loading data from Zarr...</div>} />
           <Route path="/tf" element={isReady ? <TranscriptionFactor n={appliedN} r={appliedR} /> : <div className="p-6">Loading data from Zarr...</div>} />
           <Route path="/ccc" element={isReady ? <CellCellCommunication n={appliedN} r={appliedR} /> : <div className="p-6">Loading data from Zarr...</div>} />
           <Route path="/annotation" element={<CellTypeAnnotation availableColumns={allColumns} />} />
