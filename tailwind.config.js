@@ -1,9 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
@@ -17,6 +14,7 @@ module.exports = {
         textMain: "var(--text-main)",
         textMuted: "var(--text-muted)",
         textInverse: "var(--text-inverse)",
+        selpanel: "var(--bg-selpanel)",
         primary: {
           DEFAULT: "var(--primary)",
           light: "var(--primary-light)",
@@ -41,9 +39,9 @@ module.exports = {
           DEFAULT: "var(--info)",
           light: "var(--info-light)",
           dark: "var(--info-dark)",
-        }
-      }
+        },
+      },
     },
   },
   plugins: [],
-}
+};
