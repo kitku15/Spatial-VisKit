@@ -41,6 +41,20 @@ const CellTypeAnnotation = ({ availableColumns }) => {
   const [plotData, setPlotData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [selectedInsight, setSelectedInsight] = useState(null);
+
+  // --- Helper to remove the ugly column prefix from names ---
+  const cleanLabel = (rawLabel) => {
+    let clean = rawLabel;
+    // Loop through the selected columns and strip them from the start of the label
+    selectedCols.forEach(col => {
+      const prefix = col + "_";
+      if (clean.startsWith(prefix)) {
+        clean = clean.replace(prefix, "");
+      }
+    });
+    return clean;
+  };
 
   // --- Handlers for Adding/Removing Columns ---
   const handleColumnChange = (index, value) => {
@@ -136,14 +150,15 @@ const CellTypeAnnotation = ({ availableColumns }) => {
           pad: 15,
           thickness: 20,
           line: { color: "black", width: 0.5 },
-          label: globalNodes.map(n => n.name),
-          color: globalNodes.map(n => n.color) // Apply the unique node colors
+          // Apply the cleanLabel function here to make the names pretty!
+          label: globalNodes.map(n => cleanLabel(n.name)),
+          color: globalNodes.map(n => n.color) 
         },
         link: {
           source: globalLinks.map(l => l.source),
           target: globalLinks.map(l => l.target),
           value: globalLinks.map(l => l.value),
-          color: globalLinks.map(l => l.color) // Apply the inherited transparent colors
+          color: globalLinks.map(l => l.color) 
         }
       };
 
@@ -229,15 +244,125 @@ const CellTypeAnnotation = ({ availableColumns }) => {
                   layout={{ autosize: true, margin: { l: 20, r: 20, t: 40, b: 20 } }}
                   useResizeHandler={true}
                   style={{ width: "100%", height: "100%" }}
+                  onHover={(e) => {
+                    if (!e || !e.points || e.points.length === 0) return;
+                    
+                    const point = e.points[0];
+                    const sankey = plotData[0];
+
+                    // 1. Determine which Node to display
+                    let nodeIndex;
+                    if ('source' in point && 'target' in point) {
+                      // If they hovered a link, show the details for its SOURCE node
+                      const linkIndex = point.pointNumber;
+                      nodeIndex = sankey.link.source[linkIndex];
+                    } else {
+                      // If they hovered a node, use it directly
+                      nodeIndex = point.pointNumber;
+                    }
+
+                    // 2. Calculate the total cells for this node by summing its links
+                    let nodeValueOut = 0;
+                    let nodeValueIn = 0;
+                    for (let i = 0; i < sankey.link.source.length; i++) {
+                      if (sankey.link.source[i] === nodeIndex) nodeValueOut += sankey.link.value[i];
+                      if (sankey.link.target[i] === nodeIndex) nodeValueIn += sankey.link.value[i];
+                    }
+                    // A node's true total is the max of its incoming or outgoing links
+                    const totalCells = Math.max(nodeValueOut, nodeValueIn);
+
+                    // 3. Build the Incoming and Outgoing lists
+                    const outgoing = [];
+                    const incoming = [];
+
+                    for (let i = 0; i < sankey.link.source.length; i++) {
+                      if (sankey.link.source[i] === nodeIndex) {
+                        outgoing.push({
+                          targetLabel: sankey.node.label[sankey.link.target[i]],
+                          value: sankey.link.value[i],
+                          pct: ((sankey.link.value[i] / totalCells) * 100).toFixed(1)
+                        });
+                      }
+                      if (sankey.link.target[i] === nodeIndex) {
+                        incoming.push({
+                          sourceLabel: sankey.node.label[sankey.link.source[i]],
+                          value: sankey.link.value[i],
+                          pct: ((sankey.link.value[i] / totalCells) * 100).toFixed(1)
+                        });
+                      }
+                    }
+
+                    outgoing.sort((a, b) => b.value - a.value);
+                    incoming.sort((a, b) => b.value - a.value);
+
+                    // 4. Update the UI state
+                    setSelectedInsight({
+                      type: 'node',
+                      label: sankey.node.label[nodeIndex],
+                      value: totalCells,
+                      outgoing,
+                      incoming
+                    });
+                  }}
                 />
              )}
           </div>
         </div>
 
-        {/* Space for future annotation features */}
-        <div className="bg-white p-4 border shadow-sm rounded w-1/4 flex flex-col">
-          <h3 className="font-bold text-lg mb-2 text-gray-700">Insights</h3>
-          <p className="text-sm text-gray-500 mb-4">Hover over a connection to see the exact number of cells transitioning.</p>
+        {/* Insights Panel */}
+        <div className="bg-white p-4 border shadow-sm rounded w-1/4 flex flex-col overflow-y-auto">
+          <h3 className="font-bold text-lg mb-2 text-gray-700 border-b pb-2">Insights</h3>
+          
+          {!selectedInsight ? (
+            <p className="text-sm text-gray-500 mt-2">
+              Hover over any cluster (box) or connection line (flow) in the diagram to view detailed transition statistics.
+            </p>
+          ) : (
+            <div className="mt-2 animate-fade-in flex flex-col gap-4">
+              <div className="bg-green-50 border border-green-200 p-3 rounded shadow-sm">
+                <p className="text-sm text-gray-800 font-semibold mb-1">
+                  {selectedInsight.label}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Total Cells: <span className="font-bold text-green-700">{selectedInsight.value.toLocaleString()}</span>
+                </p>
+              </div>
+
+              {/* OUTGOING: Where do the cells go? */}
+              {selectedInsight.outgoing && selectedInsight.outgoing.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Becomes (Next Step)</h4>
+                  <ul className="flex flex-col gap-1.5">
+                    {selectedInsight.outgoing.map((out, idx) => (
+                      <li key={`out-${idx}`} className="text-sm flex justify-between items-center bg-gray-50 border border-gray-200 p-1.5 rounded">
+                        <span className="font-medium text-gray-700 truncate mr-2" title={out.targetLabel}>{out.targetLabel}</span>
+                        <span className="text-xs font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded shrink-0">
+                          {out.pct}% ({out.value})
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* INCOMING: Where did the cells come from? */}
+              {selectedInsight.incoming && selectedInsight.incoming.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-2">Comes From (Previous Step)</h4>
+                  <ul className="flex flex-col gap-1.5">
+                    {selectedInsight.incoming.map((inc, idx) => (
+                      <li key={`inc-${idx}`} className="text-sm flex justify-between items-center bg-gray-50 border border-gray-200 p-1.5 rounded">
+                        <span className="font-medium text-gray-700 truncate mr-2" title={inc.sourceLabel}>{inc.sourceLabel}</span>
+                        <span className="text-xs font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded shrink-0">
+                          {inc.pct}% ({inc.value})
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

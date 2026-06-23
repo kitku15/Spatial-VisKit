@@ -169,7 +169,7 @@ export default function DEAnalysis() {
     for (let i = 0; i < labelsArray.length; i++) {
       const cluster = labelsArray[i];
       if (!clusters[cluster]) clusters[cluster] = [];
-      if (exprArray[i] > 0) clusters[cluster].push(exprArray[i]);
+      clusters[cluster].push(exprArray[i]);
     }
 
     const sortedLabels = Object.keys(clusters).sort();

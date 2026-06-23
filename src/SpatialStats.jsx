@@ -246,7 +246,7 @@ export default function SpatialStats({ n, r }) {
     return (
       <div className="flex flex-col h-full gap-4 overflow-auto p-4">
         {centralityData && (
-          <div className="h-[400px] border rounded bg-white shadow-sm flex-shrink-0">
+          <div className="h-1/3 border rounded bg-white shadow-sm flex-shrink-0">
              <Plot
                 data={centralityTraces}
                 layout={{ title: 'Network Centrality per Cluster', barmode: 'group', autosize: true }}
@@ -256,7 +256,7 @@ export default function SpatialStats({ n, r }) {
           </div>
         )}
         {moranData && (
-          <div className="h-[400px] border rounded bg-white shadow-sm flex-shrink-0">
+          <div className="h-2/3 border rounded bg-white shadow-sm flex-shrink-0">
              <Plot
                 data={moranTraces}
                 layout={{ 

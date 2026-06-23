@@ -97,6 +97,13 @@ export default function VitessceSpatialStats({ n, r, selectedSlide, selectedSamp
         url: `${API_BASE_URL}/${ZARR_DIR}/`,
         options: sortedObsSets,
         coordinationValues: { obsType: "cell" }
+      },
+      // 1. ADDED: Load the Gene Expression Matrix
+      { 
+        fileType: "obsFeatureMatrix.anndata.zarr", 
+        url: `${API_BASE_URL}/${ZARR_DIR}/`, 
+        options: { path: "X" },
+        coordinationValues: { obsType: "cell" }
       }
     ];
 
@@ -114,9 +121,11 @@ export default function VitessceSpatialStats({ n, r, selectedSlide, selectedSamp
       });
     }
 
-    const spatialScopes = { spatialSegmentationLayer: "SSL1", obsSetColor: "OSC1", obsColorEncoding: "OCE1", obsSetSelection: "OSS1" };
-    const pointScopes = { embeddingType: "ET1", obsSetColor: "OSC1", obsColorEncoding: "OCE1", obsSetSelection: "OSS1", embeddingObsRadiusMode: "RM1", embeddingObsRadius: "R1" };
-    const obsSetsScopes = { obsSetColor: "OSC1", obsSetSelection: "OSS1" };
+    // 2. UPDATED SCOPES: Added featureSelection ("FS1") so genes map to the plots
+    const spatialScopes = { spatialSegmentationLayer: "SSL1", obsSetColor: "OSC1", obsColorEncoding: "OCE1", obsSetSelection: "OSS1", featureSelection: "FS1" };
+    const pointScopes = { embeddingType: "ET1", obsSetColor: "OSC1", obsColorEncoding: "OCE1", obsSetSelection: "OSS1", embeddingObsRadiusMode: "RM1", embeddingObsRadius: "R1", featureSelection: "FS1" };
+    const obsSetsScopes = { obsSetColor: "OSC1", obsSetSelection: "OSS1", obsColorEncoding: "OCE1" };
+    const featureListScopes = { featureSelection: "FS1", obsColorEncoding: "OCE1" };
 
     return {
       version: "1.0.15",
@@ -128,6 +137,7 @@ export default function VitessceSpatialStats({ n, r, selectedSlide, selectedSamp
         obsSetColor: { OSC1: obsSetColor },
         obsSetSelection: { OSS1: obsSetSelection },
         obsColorEncoding: { OCE1: "cellSetSelection" }, 
+        featureSelection: { FS1: null }, // Added Coordination for Genes
         embeddingObsRadiusMode: { RM1: "manual" },
         embeddingObsRadius: { R1: VITESSCE_DOT_SIZE },   
         spatialZoom: { SZ1: -2 }, 
@@ -141,7 +151,9 @@ export default function VitessceSpatialStats({ n, r, selectedSlide, selectedSamp
         spatialViewMode === "segmentations"
           ? { component: "spatial", coordinationScopes: spatialScopes, x: 0, y: 0, w: 9, h: 12 }
           : { component: "scatterplot", coordinationScopes: pointScopes, x: 0, y: 0, w: 9, h: 12 },
-        { component: "obsSets", coordinationScopes: obsSetsScopes, x: 9, y: 0, w: 3, h: 12 }
+        // 3. SPLIT RIGHT PANEL: obsSets height is now 6 (top half), featureList is 6 (bottom half)
+        { component: "obsSets", coordinationScopes: obsSetsScopes, x: 9, y: 0, w: 3, h: 6 },
+        { component: "featureList", coordinationScopes: featureListScopes, x: 9, y: 6, w: 3, h: 6 }
       ]
     };
   }, [n, r, selectedSlide, selectedSample, spatialViewMode, clusterLabels, activeCategory]);

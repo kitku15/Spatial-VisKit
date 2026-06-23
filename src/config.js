@@ -6,7 +6,7 @@ export const ZARR_DIR = `adata_${ANALYSIS_NAME}.zarr`;
 export const TF_ZARR_DIR = `adata_${ANALYSIS_NAME}_tf.zarr`;
 
 // --- PROJECT SETTINGS ---
-export const PROJECT_TITLE = "CosMx Colon";
+export const PROJECT_TITLE = "CosMx SMI: Tyler - FFPE Human Colonic Biopsies";
 
 // "global" for CosMx, "spatial" for Xenium
 export const SPATIAL_KEY = "global"; 

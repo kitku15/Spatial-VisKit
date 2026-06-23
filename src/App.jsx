@@ -19,17 +19,29 @@ const Layout = ({ children, availableN, availableR, selectedN, setSelectedN, sel
   const activeClass = "bg-gray-500 text-white font-semibold px-4 py-3";
   const inactiveClass = "bg-white text-black font-semibold px-4 py-3 border-r border-gray-300 hover:bg-gray-100";
 
+   useEffect(() => {
+    // Your sidebar CSS transition takes 200ms (duration-200).
+    // We wait slightly longer (250ms) for the animation to completely finish,
+    // then fire a fake window resize event to force Vitessce/Plotly to recalculate their bounds.
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 250);
+
+    // Cleanup the timer if the user spams the toggle button
+    return () => clearTimeout(timer);
+  }, [sidebarOpen]);
+
   return (
     <div className="flex flex-col h-screen">
-      {/* ... (keep your header and nav the same as before) ... */}
-      <header className="bg-gray-400 text-3xl p-4 flex justify-between items-center text-white font-semibold">
-        <span>{PROJECT_TITLE}</span>
-        <span
-          className="text-xl cursor-pointer"
+      <header className="bg-gray-400 text-3xl p-3 flex items-center gap-4 text-white font-semibold">
+        <button
           onClick={() => setSidebarOpen(prev => !prev)}
+          className="text-2xl flex items-center justify-center w-10 h-10 rounded hover:bg-gray-500 transition-colors focus:outline-none cursor-pointer"
+          title="Toggle Settings Sidebar"
         >
-          {sidebarOpen ? "⬅️" : "➡️"}
-        </span>
+          ☰
+        </button>
+        <span>{PROJECT_TITLE}</span>
       </header>
 
       <nav className="flex border-b border-gray-400 bg-white shadow-sm">
@@ -39,9 +51,10 @@ const Layout = ({ children, availableN, availableR, selectedN, setSelectedN, sel
         <NavLink to="/stats" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Spatial Stats</NavLink>
         <NavLink to="/tf" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Transcription Factor Analysis</NavLink>
         <NavLink to="/ccc" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Cell Cell Communication</NavLink>
-        <NavLink to="/annotation" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Cell Type Annotation</NavLink>
         <NavLink to="/de-analysis" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Cell Type DE Analysis</NavLink>
         <NavLink to="/conditions-de" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Conditions DE Analysis</NavLink>
+        <NavLink to="/annotation" className={({ isActive }) => isActive ? activeClass : inactiveClass}>Cell Type Annotation</NavLink>
+
       </nav>
 
       <main className="flex-1 overflow-auto flex">
