@@ -12,6 +12,7 @@ import {
   ANALYSIS_NAME,
   largeColorPalette,
   themeColors,
+  DATA_DIR,
 } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
@@ -52,14 +53,14 @@ export default function VitessceViewer({ n, r }) {
     async function fetchData() {
       try {
         const res = await fetch(
-          `${API_BASE_URL}/spatial_metadata_${ANALYSIS_NAME}.json`,
+          `${API_BASE_URL}/${DATA_DIR}/spatial_metadata_${ANALYSIS_NAME}.json`,
         );
         if (res.ok) {
           const data = await res.json();
           setHierarchy(data);
           setAvailableSlides(["All", ...Object.keys(data)]);
         }
-        const compRes = await fetch(`${API_BASE_URL}/cell_composition.json`);
+        const compRes = await fetch(`${API_BASE_URL}/${DATA_DIR}/cell_composition.json`);
         if (compRes.ok) setCompositionData(await compRes.json());
       } catch (err) {
         console.warn("Could not load Vitessce JSON data", err);
@@ -154,14 +155,14 @@ export default function VitessceViewer({ n, r }) {
 
   const config = useMemo(() => {
     let spatialEmbeddingKey = `obsm/${SPATIAL_KEY}`;
-    let segmentationsFile = "segmentations/segmentations.json";
+    let segmentationsFile = `/${DATA_DIR}/segmentations/segmentations.json`;
 
     if (appliedFilters.sample !== "All") {
       spatialEmbeddingKey = `obsm/${SPATIAL_KEY}_${appliedFilters.sample}`;
-      segmentationsFile = `segmentations/segmentations_${appliedFilters.sample}.json`;
+      segmentationsFile = `/${DATA_DIR}/segmentations/segmentations_${appliedFilters.sample}.json`;
     } else if (appliedFilters.slide !== "All") {
       spatialEmbeddingKey = `obsm/${SPATIAL_KEY}_${appliedFilters.slide}`;
-      segmentationsFile = `segmentations/segmentations_${appliedFilters.slide}.json`;
+      segmentationsFile = `/${DATA_DIR}/segmentations/segmentations_${appliedFilters.slide}.json`;
     }
 
     const obsSetColor = Object.keys(colorMap).map((label) => ({

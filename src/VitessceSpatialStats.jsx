@@ -8,6 +8,7 @@ import {
   largeColorPalette,
   EXTRA_OBS_SETS,
   ANNOTATION_PREFIX,
+  DATA_DIR
 } from "./config";
 
 const hexToRgb = (hex) => {
@@ -28,7 +29,7 @@ export default function VitessceSpatialStats({
   const [compositionData, setCompositionData] = useState(null);
 
   useEffect(() => {
-    fetch("data/cell_composition.json")
+    fetch(`${DATA_DIR}/cell_composition.json`)
       .then((res) => res.json())
       .then((data) => setCompositionData(data))
       .catch((err) =>
@@ -69,9 +70,9 @@ export default function VitessceSpatialStats({
     const segmentationsFile =
       selectedSample === "All"
         ? selectedSlide === "All"
-          ? "segmentations/segmentations.json"
-          : `segmentations/segmentations_${selectedSlide}.json`
-        : `segmentations/segmentations_${selectedSample}.json`;
+          ? `/${DATA_DIR}/segmentations/segmentations.json`
+          : `/${DATA_DIR}/segmentations/segmentations_${selectedSlide}.json`
+        : `/${DATA_DIR}/segmentations/segmentations_${selectedSample}.json`;
 
     const obsSetColor = clusterLabels.map((label, i) => {
       if (activeCategory === "MuSpAn ROI") {

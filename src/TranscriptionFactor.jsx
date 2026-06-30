@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import VitessceTF from "./VitessceTF";
-import { API_BASE_URL, ANALYSIS_NAME, themeColors } from "./config";
+import { API_BASE_URL, ANALYSIS_NAME, DATA_DIR, themeColors  } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
@@ -29,9 +29,7 @@ export default function TranscriptionFactor({ n, r }) {
   useEffect(() => {
     async function fetchMetadata() {
       try {
-        const res = await fetch(
-          `${API_BASE_URL}/spatial_metadata_${ANALYSIS_NAME}.json`,
-        );
+        const res = await fetch(`/${DATA_DIR}/spatial_metadata_${ANALYSIS_NAME}.json`);
         if (!res.ok) return;
         const data = await res.json();
         setHierarchy(data);
@@ -60,7 +58,7 @@ export default function TranscriptionFactor({ n, r }) {
   useEffect(() => {
     async function fetchHeatmap() {
       try {
-        const res = await fetch("data/tf_heatmap_data.json");
+        const res = await fetch(`/${DATA_DIR}/tf_heatmap_data.json`);
         if (!res.ok) return;
         const data = await res.json();
         setHeatmapData(data);

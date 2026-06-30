@@ -4,7 +4,7 @@ import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
-import { themeColors } from "./config";
+import { themeColors, DATA_DIR } from "./config";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -101,10 +101,10 @@ export default function ConditionsDE() {
     async function initData() {
       try {
         const meta = await fetch(
-          "data/conditions_de_analysis/conditions_de_metadata.json",
+          `${DATA_DIR}/conditions_de_analysis/conditions_de_metadata.json`,
         ).then((r) => r.json());
-        const genes = await fetch("data/genes_list.json").then((r) => r.json());
-        const clusters = await fetch("data/cell_clusters.json").then((r) =>
+        const genes = await fetch(`${DATA_DIR}/genes_list.json`).then((r) => r.json());
+        const clusters = await fetch(`${DATA_DIR}/cell_clusters.json`).then((r) =>
           r.json(),
         );
 
@@ -142,13 +142,13 @@ export default function ConditionsDE() {
     if (!selectedCellType || !selectedComparison) return;
 
     fetch(
-      `data/conditions_de_analysis/${selectedCellType}_comparison_${selectedComparison}.json`,
+      `${DATA_DIR}/conditions_de_analysis/${selectedCellType}_comparison_${selectedComparison}.json`,
     )
       .then((r) => r.json())
       .then(setVolcanoData)
       .catch(() => setVolcanoData(null));
 
-    d3.csv(`data/conditions_de_analysis/summary_${selectedCellType}.csv`)
+    d3.csv(`${DATA_DIR}/conditions_de_analysis/summary_${selectedCellType}.csv`)
       .then((data) => {
         const compRow = data.find((d) => d.Comparison === selectedComparison);
         if (compRow) {
@@ -189,7 +189,7 @@ export default function ConditionsDE() {
   useEffect(() => {
     panelGenes.forEach((g) => {
       if (g && !geneExpressions[g.safe]) {
-        fetch(`data/genes/${g.safe}.json`)
+        fetch(`${DATA_DIR}/genes/${g.safe}.json`)
           .then((r) => r.json())
           .then((d) =>
             setGeneExpressions((prev) => ({ ...prev, [g.safe]: d })),

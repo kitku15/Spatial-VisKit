@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Vitessce } from "vitessce";
-import { API_BASE_URL, TF_ZARR_DIR } from "./config";
+import { API_BASE_URL, TF_ZARR_DIR} from "./config";
 
 export default function VitessceTF({
   viewMode,

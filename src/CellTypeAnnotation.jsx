@@ -3,7 +3,7 @@ import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
-import { annotationColorPalette, themeColors } from "./config";
+import { annotationColorPalette, themeColors, DATA_DIR } from "./config";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -103,7 +103,7 @@ const CellTypeAnnotation = ({ availableColumns }) => {
         const colB = selectedCols[i + 1];
         const fileName = `${colA}_vs_${colB}.json`;
 
-        const response = await fetch(`data/sankeys/${fileName}`);
+        const response = await fetch(`${DATA_DIR}/sankeys/${fileName}`);
         if (!response.ok) {
           throw new Error(`Data not found for: ${colA} → ${colB}`);
         }

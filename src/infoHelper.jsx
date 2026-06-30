@@ -76,4 +76,12 @@ export const tabInfo = {
       "• Split Violins: Search for up to 3 genes in the bottom panels to compare their distributions side-by-side. Dotted lines indicate the mean expression for each condition.\n" +
       "• Hide Zeros: Check this box to drop cells with 0 expression, allowing you to compare shifts only in the cells actively expressing the target genes.",
   },
+  spatialCcc: {
+    title: "Spatial CCC (LIANA) Guide",
+    content:
+      "Welcome to the Spatial CCC tab.\n\n" +
+      "• Interaction Mapping: Select a Ligand-Receptor pair (LR_) or Communication Signature (CCC_) from the dropdown to visualize its exact spatial footprint.\n" +
+      "• Intensity Threshold: Adjust the 'Min Color Threshold' slider to filter out low-scoring background cells and highlight strong interactions.\n" +
+      "• Single-Cell Resolution: Unlike macro-level cluster networks, these scores represent cell-cell communication happening at the micro-level across physical space."
+  },
 };

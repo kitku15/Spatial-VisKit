@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import * as d3 from "d3";
-import { themeColors, defaultCategoryPalette } from "./config";
+import { themeColors, defaultCategoryPalette, DATA_DIR } from "./config";
 import VitessceCCC from "./VitessceCCC";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
@@ -38,8 +38,8 @@ export default function CellCellCommunication({ n, r }) {
     async function loadData() {
       try {
         const [edgesRes, microRes] = await Promise.all([
-          fetch("data/cpdb_edges.json"),
-          fetch("data/cpdb_microenvs.json"),
+          fetch(`${DATA_DIR}/cpdb_edges.json`),
+          fetch(`${DATA_DIR}/cpdb_microenvs.json`),
         ]);
 
         const edgesData = await edgesRes.json();

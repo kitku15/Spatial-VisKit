@@ -5,6 +5,7 @@ import {
   ANALYSIS_NAME,
   channelColorMap,
   defaultChannelColorNames,
+  DATA_DIR,
 } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
@@ -108,11 +109,11 @@ export default function MultiplexGeneOverlay() {
       setIsLoading(true);
       try {
         const [metaRes, geneRes, locRes] = await Promise.all([
-          fetch(`data/spatial_metadata_${ANALYSIS_NAME}.json`).catch(
+          fetch(`${DATA_DIR}/spatial_metadata_${ANALYSIS_NAME}.json`).catch(
             () => null,
           ),
-          fetch("data/genes_list.json"),
-          fetch("data/locations_optimized.json"),
+          fetch(`${DATA_DIR}/genes_list.json`),
+          fetch(`${DATA_DIR}/locations_optimized.json`),
         ]);
 
         const metaData = metaRes ? await metaRes.json() : { All: ["All"] };
@@ -175,7 +176,7 @@ export default function MultiplexGeneOverlay() {
     channels.forEach((ch) => {
       if (ch.gene && !exprData[ch.gene.safe]) {
         setExprData((prev) => ({ ...prev, [ch.gene.safe]: { loading: true } }));
-        fetch(`data/genes/${ch.gene.safe}.json`)
+        fetch(`${DATA_DIR}/genes/${ch.gene.safe}.json`)
           .then((r) => r.json())
           .then((data) =>
             setExprData((prev) => ({ ...prev, [ch.gene.safe]: data })),

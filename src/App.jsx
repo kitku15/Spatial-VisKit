@@ -6,7 +6,7 @@ import {
   NavLink,
   Navigate,
 } from "react-router-dom";
-import { ZARR_DIR, PROJECT_TITLE } from "./config";
+import { ZARR_DIR, PROJECT_TITLE, DATA_DIR} from "./config";
 import VitessceViewer from "./VitessceViewer";
 import CellTypeAnnotation from "./CellTypeAnnotation";
 import CellCellCommunication from "./CellCellCommunication";
@@ -16,6 +16,7 @@ import QualityControl from "./QualityControl";
 import MultiplexGeneOverlay from "./MultiplexGeneOverlay";
 import DEAnalysis from "./DEAnalysis";
 import ConditionsDE from "./ConditionsDE";
+import SpatialCCC from "./SpatialCCC";
 
 // --- MAIN LAYOUT COMPONENT ---
 // We now pass our state and functions into the layout as props
@@ -95,6 +96,12 @@ const Layout = ({
           className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
         >
           Cell Cell Communication
+        </NavLink>
+        <NavLink
+          to="/spatial-ccc"
+          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
+        >
+          Spatial CCC (LIANA)
         </NavLink>
         <NavLink
           to="/de-analysis"
@@ -239,7 +246,7 @@ export default function App() {
     async function fetchZarrMetadata() {
       try {
         // Zarr stores AnnData column names in the obs/.zattrs file
-        const response = await fetch(`data/${ZARR_DIR}/obs/.zattrs`);
+        const response = await fetch(`/${ZARR_DIR}/obs/.zattrs`);
         const data = await response.json();
 
         // Scanpy saves the column names in "column-order"
@@ -345,6 +352,16 @@ export default function App() {
             element={
               isReady ? (
                 <CellCellCommunication n={appliedN} r={appliedR} />
+              ) : (
+                <div className="p-6">Loading data from Zarr...</div>
+              )
+            }
+          />
+          <Route
+            path="/spatial-ccc"
+            element={
+              isReady ? (
+                <SpatialCCC n={appliedN} />
               ) : (
                 <div className="p-6">Loading data from Zarr...</div>
               )

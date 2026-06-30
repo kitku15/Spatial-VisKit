@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
-import { largeColorPalette, themeColors } from "./config";
+import { largeColorPalette, themeColors, DATA_DIR } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
@@ -97,16 +97,16 @@ export default function DEAnalysis() {
 
   useEffect(() => {
     async function initData() {
-      const meta = await fetch("data/de_analysis/de_metadata.json").then((r) =>
+      const meta = await fetch(`${DATA_DIR}/de_analysis/de_metadata.json`).then((r) =>
         r.json(),
       );
       const annos = Object.keys(meta);
       setAnnotations(annos);
       if (annos.length > 0) setSelectedAnnotation(annos[0]);
-      fetch("data/cell_clusters.json")
+      fetch(`${DATA_DIR}/cell_clusters.json`)
         .then((r) => r.json())
         .then(setClusterLabels);
-      fetch("data/genes_list.json")
+      fetch(`${DATA_DIR}/genes_list.json`)
         .then((r) => r.json())
         .then(setAvailableGenes);
     }
@@ -117,7 +117,7 @@ export default function DEAnalysis() {
     if (!selectedAnnotation) return;
     async function fetchTable() {
       const tableCsv = await d3.csv(
-        `data/de_analysis/top_DEgenes_${selectedAnnotation}.csv`,
+        `${DATA_DIR}/de_analysis/top_DEgenes_${selectedAnnotation}.csv`,
       );
       setTopGenesTable(tableCsv);
       if (tableCsv.length > 0) setSelectedCluster(tableCsv[0]["Cluster Name"]);
@@ -146,7 +146,7 @@ export default function DEAnalysis() {
     const safeCluster = selectedCluster
       .replace(/[^\w\s-]/g, "")
       .replace(/\s+/g, "_");
-    fetch(`data/de_analysis/${selectedAnnotation}_cluster_${safeCluster}.json`)
+    fetch(`${DATA_DIR}/de_analysis/${selectedAnnotation}_cluster_${safeCluster}.json`)
       .then((r) => r.json())
       .then(setVolcanoData)
       .catch(() => setVolcanoData(null));
@@ -154,7 +154,7 @@ export default function DEAnalysis() {
 
   useEffect(() => {
     if (gene1)
-      fetch(`data/genes/${gene1.safe}.json`)
+      fetch(`${DATA_DIR}/genes/${gene1.safe}.json`)
         .then((r) => r.json())
         .then(setExpr1);
   }, [gene1]);

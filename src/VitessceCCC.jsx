@@ -6,6 +6,7 @@ import {
   SPATIAL_KEY,
   ANNOTATION_PREFIX,
   VITESSCE_DOT_SIZE,
+  DATA_DIR
 } from "./config";
 
 const hexToRgb = (hex) => {
@@ -29,8 +30,8 @@ export default function VitessceCCC({
         : `obsm/spatial_microenv_${selectedMicroenv}`;
     const segmentationsFile =
       selectedMicroenv === "All"
-        ? `segmentations/segmentations.json`
-        : `segmentations/segmentations_microenv_${selectedMicroenv}.json`;
+        ? `/${DATA_DIR}/segmentations/segmentations.json`
+        : `/${DATA_DIR}/segmentations/segmentations_microenv_${selectedMicroenv}.json`;
     const cellTypeName = "Cell Annotation";
     const cellTypePath = `obs/${ANNOTATION_PREFIX}_n${n}_r${r}`;
     const obsSetColor = cellColorMap.map((c) => ({

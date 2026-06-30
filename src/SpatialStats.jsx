@@ -7,6 +7,7 @@ import {
   largeColorPalette,
   themeColors,
   EXTRA_OBS_SETS,
+  DATA_DIR,
 } from "./config";
 import VitessceSpatialStats from "./VitessceSpatialStats";
 import InfoModal from "./InfoModal";
@@ -43,7 +44,7 @@ export default function SpatialStats({ n, r }) {
   useEffect(() => {
     async function fetchMetadata() {
       try {
-        const res = await fetch(`data/spatial_metadata_${ANALYSIS_NAME}.json`);
+        const res = await fetch(`${DATA_DIR}/spatial_metadata_${ANALYSIS_NAME}.json`);
         if (!res.ok) return;
         const data = await res.json();
         setHierarchy(data);
@@ -75,7 +76,7 @@ export default function SpatialStats({ n, r }) {
   useEffect(() => {
     if (!selectedSample || selectedSample === "All") return;
 
-    const basePath = `data/spatial_stats/${selectedSample}`;
+    const basePath = `${DATA_DIR}/spatial_stats/${selectedSample}`;
 
     fetch(`${basePath}/nhood_enrichment_${selectedSample}.json`)
       .then((r) => (r.ok ? r.json() : null))
