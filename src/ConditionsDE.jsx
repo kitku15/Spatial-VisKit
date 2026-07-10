@@ -96,6 +96,7 @@ export default function ConditionsDE() {
   const [cellClusters, setCellClusters] = useState(null);
   const [geneExpressions, setGeneExpressions] = useState({});
   const [filterZeros, setFilterZeros] = useState(false);
+  const [chunkIndex, setChunkIndex] = useState({});
 
   useEffect(() => {
     async function initData() {
@@ -107,6 +108,8 @@ export default function ConditionsDE() {
         const clusters = await fetch(`${DATA_DIR}/cell_clusters.json`).then((r) =>
           r.json(),
         );
+        const chunks = await fetch(`${DATA_DIR}/gene_chunk_index.json`).then((r) => r.json()).catch(() => ({}));
+        setChunkIndex(chunks);
 
         setConfig(meta.config);
         setComparisonsMap(meta.comparisons);
@@ -189,14 +192,18 @@ export default function ConditionsDE() {
   useEffect(() => {
     panelGenes.forEach((g) => {
       if (g && !geneExpressions[g.safe]) {
-        fetch(`${DATA_DIR}/genes/${g.safe}.json`)
+        const chunkFile = chunkIndex[g.safe];
+        if (!chunkFile) return;
+        
+        fetch(`${DATA_DIR}/genes/${chunkFile}.json`)
           .then((r) => r.json())
-          .then((d) =>
-            setGeneExpressions((prev) => ({ ...prev, [g.safe]: d })),
-          );
+          .then((data) => {
+             // Cache all genes from this chunk
+            setGeneExpressions((prev) => ({ ...prev, ...data }));
+          });
       }
     });
-  }, [panelGenes, geneExpressions]);
+  }, [panelGenes, geneExpressions, chunkIndex]);
 
   const handleGeneChange = (index, newGene) => {
     const updated = [...panelGenes];

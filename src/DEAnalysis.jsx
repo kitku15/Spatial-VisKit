@@ -94,6 +94,8 @@ export default function DEAnalysis() {
 
   const [gene1, setGene1] = useState(null);
   const [expr1, setExpr1] = useState(null);
+  const [chunkIndex, setChunkIndex] = useState({});
+
 
   useEffect(() => {
     async function initData() {
@@ -109,6 +111,10 @@ export default function DEAnalysis() {
       fetch(`${DATA_DIR}/genes_list.json`)
         .then((r) => r.json())
         .then(setAvailableGenes);
+      fetch(`${DATA_DIR}/gene_chunk_index.json`)
+        .then((r) => r.json())
+        .then(setChunkIndex)
+        .catch(() => setChunkIndex({}));
     }
     initData();
   }, []);
@@ -153,11 +159,15 @@ export default function DEAnalysis() {
   }, [selectedAnnotation, selectedCluster, availableGenes, topGenesTable]);
 
   useEffect(() => {
-    if (gene1)
-      fetch(`${DATA_DIR}/genes/${gene1.safe}.json`)
-        .then((r) => r.json())
-        .then(setExpr1);
-  }, [gene1]);
+    if (gene1) {
+      const chunkFile = chunkIndex[gene1.safe];
+      if (chunkFile) {
+        fetch(`${DATA_DIR}/genes/${chunkFile}.json`)
+          .then((r) => r.json())
+          .then((data) => setExpr1(data[gene1.safe]));
+      }
+    }
+  }, [gene1, chunkIndex]);
 
   const clusterColorMap = useMemo(() => {
     if (

@@ -1,8 +1,8 @@
 // ./config.js
 
 export const API_BASE_URL = "http://192.168.0.165:9001";
-export const ANALYSIS_NAME = "Kitam_better";
-export const DATA_DIR = "data_kitam";
+export const ANALYSIS_NAME = "tyler_better";
+export const DATA_DIR = "data_tyler";
 export const ZARR_DIR = `${DATA_DIR}/adata_${ANALYSIS_NAME}.zarr`;
 export const TF_ZARR_DIR = `${DATA_DIR}/adata_${ANALYSIS_NAME}_tf.zarr`;
 
@@ -24,11 +24,10 @@ export const VITESSCE_DOT_SIZE = 2;
 // The "path" must precisely match the column name in your Python AnnData object (e.g., 'obs/DiseaseType').
 export const EXTRA_OBS_SETS = [
   { name: "FOV", path: "obs/fov" },
-  // { name: "Disease Type", path: "obs/DiseaseType" },
-  // { name: "Treatment Response", path: "obs/TreatmentResponse" },
-  // { name: "Sample ID", path: "obs/sample_id" },
+  { name: "Disease Type", path: "obs/DiseaseType" },
+  { name: "Treatment Response", path: "obs/TreatmentResponse" },
+  { name: "Sample ID", path: "obs/sample_id" },
   { name: "Slide ID", path: "obs/slide_id" },
-  { name: "MuSpan ROI", path: "obs/muspan_region" },
   { name: "Spatial Microenvironment", path: "obs/spatial_microenvironment" },
 ];
 

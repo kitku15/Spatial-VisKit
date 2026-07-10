@@ -17,6 +17,7 @@ import MultiplexGeneOverlay from "./MultiplexGeneOverlay";
 import DEAnalysis from "./DEAnalysis";
 import ConditionsDE from "./ConditionsDE";
 import SpatialCCC from "./SpatialCCC";
+import ConditionsCausal from "./ConditionsCausal";
 
 // --- MAIN LAYOUT COMPONENT ---
 // We now pass our state and functions into the layout as props
@@ -120,6 +121,12 @@ const Layout = ({
           className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
         >
           Cell Type Annotation
+        </NavLink>
+        <NavLink
+          to="/conditions-causal"
+          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
+        >
+          Condition Signaling (Causal)
         </NavLink>
       </nav>
 
@@ -373,6 +380,10 @@ export default function App() {
           />
           <Route path="/de-analysis" element={<DEAnalysis />} />
           <Route path="/conditions-de" element={<ConditionsDE />} />
+          <Route
+            path="/conditions-causal"
+            element={<ConditionsCausal />}
+          />
         </Routes>
       </Layout>
     </Router>
