@@ -16,6 +16,15 @@ export const tabInfo = {
       "• Gene Expression: Click any gene in the bottom-right list to override the cell colors and view a heatmap of that gene's expression.\n" +
       "• Pie Chart Filtering: Click a slice in the composition pie chart to isolate and highlight only that specific cell type in the plots above.",
   },
+  composition: {
+    title: "Composition Analysis Guide",
+    content:
+      "Welcome to the Composition Analysis tab.\n\n" +
+      "• This tool dynamically builds stacked bar charts to compare the proportions of cell types or metadata across different conditions.\n" +
+      "• Filter By (Optional): Isolate specific cells before charting (e.g., restrict analysis to ONLY 'Immune' cells).\n" +
+      "• X-Axis Group: Defines the columns on the chart (e.g., compare across 'DiseaseType' or 'Sample ID').\n" +
+      "• Breakdown/Colors: Defines what the colored slices represent (e.g., 'Broad_CellType'). All bars sum to 100% (Fraction = 1.0) to easily compare proportions.",
+  },
   multiplex: {
     title: "Multiplex Gene Overlay Guide",
     content:

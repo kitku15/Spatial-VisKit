@@ -7,8 +7,8 @@ import {
   VITESSCE_DOT_SIZE,
   largeColorPalette,
   EXTRA_OBS_SETS,
-  ANNOTATION_PREFIX,
-  DATA_DIR
+  DATA_DIR,
+  DYNAMIC_ANNOTATIONS,
 } from "./config";
 
 const hexToRgb = (hex) => {
@@ -25,6 +25,7 @@ export default function VitessceSpatialStats({
   selectedSample,
   activeCategory,
   spatialViewMode,
+  customColors = {},
 }) {
   const [compositionData, setCompositionData] = useState(null);
 
@@ -39,9 +40,10 @@ export default function VitessceSpatialStats({
 
   const internalColName = useMemo(() => {
     if (activeCategory === "MuSpAn ROI") return "muspan_region";
-    if (activeCategory === "Cell Clusters") return `leiden_n${n}_r${r}`;
-    if (activeCategory === "CellTypist (Majority Voting)")
-      return `${ANNOTATION_PREFIX}_n${n}_r${r}`;
+    
+    const dynamicAnn = DYNAMIC_ANNOTATIONS.find((a) => a.name === activeCategory);
+    if (dynamicAnn) return `${dynamicAnn.prefix}_n${n}_r${r}`;
+    
     const extra = EXTRA_OBS_SETS.find((e) => e.name === activeCategory);
     return extra ? extra.path.replace("obs/", "") : "";
   }, [activeCategory, n, r]);
@@ -83,7 +85,7 @@ export default function VitessceSpatialStats({
       }
       return {
         path: [activeCategory, label],
-        color: hexToRgb(largeColorPalette[i % largeColorPalette.length]),
+        color: hexToRgb(customColors[label] || largeColorPalette[i % largeColorPalette.length]),
       };
     });
 
@@ -93,11 +95,10 @@ export default function VitessceSpatialStats({
     ]);
 
     const allObsSets = [
-      { name: "Cell Clusters", path: `obs/leiden_n${n}_r${r}` },
-      {
-        name: "CellTypist (Majority Voting)",
-        path: `obs/${ANNOTATION_PREFIX}_n${n}_r${r}`,
-      },
+      ...DYNAMIC_ANNOTATIONS.map((ann) => ({
+        name: ann.name,
+        path: `obs/${ann.prefix}_n${n}_r${r}`,
+      })),
       { name: "MuSpAn ROI", path: "obs/muspan_region" },
       ...EXTRA_OBS_SETS,
     ];
@@ -105,7 +106,7 @@ export default function VitessceSpatialStats({
     const sortedObsSets = [
       allObsSets.find((set) => set.name === activeCategory),
       ...allObsSets.filter((set) => set.name !== activeCategory),
-    ].filter(Boolean);
+    ].filter((set) => set && set.path); 
 
     const files = [
       {

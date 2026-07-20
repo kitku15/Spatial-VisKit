@@ -8,6 +8,8 @@ import {
   themeColors,
   EXTRA_OBS_SETS,
   DATA_DIR,
+  DEFAULT_MORPH_METRIC,
+  DYNAMIC_ANNOTATIONS,
 } from "./config";
 import VitessceSpatialStats from "./VitessceSpatialStats";
 import InfoModal from "./InfoModal";
@@ -17,11 +19,11 @@ const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
 
-export default function SpatialStats({ n, r }) {
+export default function SpatialStats({ n, r, embedding, customColors = {} }) {
   const [activeTab, setActiveTab] = useState("nhood");
 
   // Lifted state from Vitessce wrapper
-  const [activeCategory, setActiveCategory] = useState("Cell Clusters");
+  const [activeCategory, setActiveCategory] = useState(DYNAMIC_ANNOTATIONS[0].name);
   const [spatialViewMode, setSpatialViewMode] = useState("segmentations");
 
   const [hierarchy, setHierarchy] = useState({});
@@ -39,7 +41,7 @@ export default function SpatialStats({ n, r }) {
   const [pcfClusterA, setPcfClusterA] = useState("");
   const [pcfClusterB, setPcfClusterB] = useState("");
 
-  const [activeMorphMetric, setActiveMorphMetric] = useState("Area (µm²)");
+  const [activeMorphMetric, setActiveMorphMetric] = useState(DEFAULT_MORPH_METRIC);
 
   useEffect(() => {
     async function fetchMetadata() {
@@ -283,7 +285,7 @@ export default function SpatialStats({ n, r }) {
         name: `Cluster ${clusterName}`,
         box: { visible: true },
         meanline: { visible: true },
-        marker: { color: largeColorPalette[index % largeColorPalette.length] },
+        marker: { color: customColors[clusterName] || largeColorPalette[index % largeColorPalette.length] },
       };
     });
 
@@ -362,7 +364,7 @@ export default function SpatialStats({ n, r }) {
           name: `Cluster ${cluster}`,
           type: "bar",
           marker: {
-            color: largeColorPalette[index % largeColorPalette.length],
+            color: customColors[cluster] || largeColorPalette[index % largeColorPalette.length],
           },
         }))
       : [];
@@ -508,8 +510,11 @@ export default function SpatialStats({ n, r }) {
               value={activeCategory}
               onChange={(e) => setActiveCategory(e.target.value)}
             >
-              <option value="Cell Clusters">Cell Clusters</option>
-              <option value="CellTypist (Majority Voting)">CellTypist</option>
+              {DYNAMIC_ANNOTATIONS.map((ann) => (
+                <option key={ann.name} value={ann.name}>
+                  {ann.name}
+                </option>
+              ))}
               <option value="MuSpAn ROI">MuSpAn ROI</option>
               {EXTRA_OBS_SETS.map((s) => (
                 <option key={s.name} value={s.name}>
@@ -586,6 +591,7 @@ export default function SpatialStats({ n, r }) {
               activeTab={activeTab}
               activeCategory={activeCategory}
               spatialViewMode={spatialViewMode}
+              customColors={customColors}
             />
           </div>
         </div>

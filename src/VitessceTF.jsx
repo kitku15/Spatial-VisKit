@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Vitessce } from "vitessce";
-import { API_BASE_URL, TF_ZARR_DIR} from "./config";
+import { API_BASE_URL, TF_ZARR_DIR, SPATIAL_KEY } from "./config";
 
 export default function VitessceTF({
   viewMode,
@@ -8,15 +8,16 @@ export default function VitessceTF({
   selectedSample,
   n,
   minColorRange,
+  embedding,
 }) {
   const config = useMemo(() => {
-    let embeddingKey = `obsm/X_umap_n${n}`;
+    let embeddingKey = `obsm/${embedding}`;
     if (viewMode === "Spatial") {
       if (selectedSample !== "All")
-        embeddingKey = `obsm/global_${selectedSample}`;
+        embeddingKey = `obsm/${SPATIAL_KEY}_${selectedSample}`;
       else if (selectedSlide !== "All")
-        embeddingKey = `obsm/global_${selectedSlide}`;
-      else embeddingKey = "obsm/global";
+        embeddingKey = `obsm/${SPATIAL_KEY}_${selectedSlide}`;
+      else embeddingKey = `obsm/${SPATIAL_KEY}`;
     }
 
     return {

@@ -81,7 +81,7 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
   );
 }
 
-export default function DEAnalysis() {
+export default function DEAnalysis({ customColors = {} }) {
   const [annotations, setAnnotations] = useState([]);
   const [selectedAnnotation, setSelectedAnnotation] = useState("");
   const [selectedCluster, setSelectedCluster] = useState("");
@@ -181,10 +181,10 @@ export default function DEAnalysis() {
     ).sort();
     const map = {};
     uniqueClusters.forEach(
-      (c, i) => (map[c] = largeColorPalette[i % largeColorPalette.length]),
+      (c, i) => (map[c] = customColors[c] || largeColorPalette[i % largeColorPalette.length]),
     );
     return map;
-  }, [clusterLabels, selectedAnnotation]);
+  }, [clusterLabels, selectedAnnotation, customColors]);
 
   const volcanoPlot = useMemo(() => {
     if (!volcanoData) return null;

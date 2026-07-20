@@ -1,8 +1,8 @@
 // ./config.js
 
 export const API_BASE_URL = "http://192.168.0.165:9001";
-export const ANALYSIS_NAME = "tyler_better";
-export const DATA_DIR = "data_tyler";
+export const ANALYSIS_NAME = "tyler_proseg_joint";
+export const DATA_DIR = "data_tyler_proseg_joint";
 export const ZARR_DIR = `${DATA_DIR}/adata_${ANALYSIS_NAME}.zarr`;
 export const TF_ZARR_DIR = `${DATA_DIR}/adata_${ANALYSIS_NAME}_tf.zarr`;
 
@@ -10,15 +10,24 @@ export const TF_ZARR_DIR = `${DATA_DIR}/adata_${ANALYSIS_NAME}_tf.zarr`;
 export const PROJECT_TITLE = "CosMx SMI: Tyler - FFPE Human Colonic Biopsies";
 // export const PROJECT_TITLE = "CosMx SMI:  - Mouse Brain";
 
-
 // "global" for CosMx, "spatial" for Xenium
 export const SPATIAL_KEY = "global";
 
-// Base prefix for the cell annotation column used in pipeline (e.g. "CellTypist_majorityvoting_leiden" or "sctype_leiden")
-export const ANNOTATION_PREFIX = "CellTypist_majorityvoting_leiden";
-
 // Visual size of dots in Vitessce (CosMx ~ 2.0, Xenium ~ 0.5)
 export const VITESSCE_DOT_SIZE = 2;
+
+// --- ANNOTATION SETTINGS ---
+
+// For annotations that change based on neighbors/resolution (e.g. they end in _n10_r0.1)
+export const DYNAMIC_ANNOTATIONS = [
+  { name: "Cell Clusters (Leiden)", prefix: "leiden" },
+];
+
+// For components that only display a single primary annotation (like Cell-Cell Communication)
+export const PRIMARY_ANNOTATION_PREFIX = "Broad_Celltype"; 
+
+// NOTE: Static annotations that DO NOT change by resolution (like 'scanvi_label') 
+// should simply be placed in EXTRA_OBS_SETS below!
 
 // Define extra categorical columns from adata.obs you want to view in Vitessce.
 // The "path" must precisely match the column name in your Python AnnData object (e.g., 'obs/DiseaseType').
@@ -29,7 +38,22 @@ export const EXTRA_OBS_SETS = [
   { name: "Sample ID", path: "obs/sample_id" },
   { name: "Slide ID", path: "obs/slide_id" },
   { name: "Spatial Microenvironment", path: "obs/spatial_microenvironment" },
+  { name: "scANVI", path: "obs/C_scANVI" },
+  { name: "Coarse Cell Type", path: "obs/Coarse_Celltype" },
+  { name: "Broad Cell Type", path: "obs/Broad_Celltype" },
 ];
+
+// Spatial CCC prefixes (e.g., Ligand-Receptor pairs or NMF factors)
+export const SPATIAL_CCC_PREFIXES = {
+  LR: "LR_",
+  CCC: "CCC_"
+};
+
+// Prefix used for microenvironment embedding and segmentation files
+export const MICROENV_PREFIX = "spatial_microenv_";
+
+// Default column name for the morphology violin plot in Spatial Stats
+export const DEFAULT_MORPH_METRIC = "Area (µm²)";
 
 const getCSSVar = (name) =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim();

@@ -7,12 +7,12 @@ import {
   ZARR_DIR,
   EXTRA_OBS_SETS,
   SPATIAL_KEY,
-  ANNOTATION_PREFIX,
   VITESSCE_DOT_SIZE,
   ANALYSIS_NAME,
   largeColorPalette,
   themeColors,
   DATA_DIR,
+  DYNAMIC_ANNOTATIONS,
 } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
@@ -28,10 +28,10 @@ const hexToRgb = (hex) => {
   return [r, g, b];
 };
 
-export default function VitessceViewer({ n, r }) {
+export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
   const [selectedSlide, setSelectedSlide] = useState("All");
   const [selectedSample, setSelectedSample] = useState("All");
-  const [activeCategory, setActiveCategory] = useState("Cell Clusters");
+  const [activeCategory, setActiveCategory] = useState(DYNAMIC_ANNOTATIONS[0].name);
   const [spatialViewMode, setSpatialViewMode] = useState("segmentations");
 
   const [appliedFilters, setAppliedFilters] = useState({
@@ -88,13 +88,10 @@ export default function VitessceViewer({ n, r }) {
   }, [appliedFilters, n, r]);
 
   const internalColName = useMemo(() => {
-    if (appliedFilters.category === "Cell Clusters")
-      return `leiden_n${n}_r${r}`;
-    if (appliedFilters.category === "CellTypist (Majority Voting)")
-      return `CellTypist_majorityvoting_leiden_n${n}_r${r}`;
-    const extra = EXTRA_OBS_SETS.find(
-      (e) => e.name === appliedFilters.category,
-    );
+    const dynamicAnn = DYNAMIC_ANNOTATIONS.find((a) => a.name === appliedFilters.category);
+    if (dynamicAnn) return `${dynamicAnn.prefix}_n${n}_r${r}`;
+    
+    const extra = EXTRA_OBS_SETS.find((e) => e.name === appliedFilters.category);
     return extra ? extra.path.replace("obs/", "") : "";
   }, [appliedFilters.category, n, r]);
 
@@ -115,10 +112,10 @@ export default function VitessceViewer({ n, r }) {
     const labels = Object.keys(currentDataCounts).sort();
     const map = {};
     labels.forEach((label, i) => {
-      map[label] = largeColorPalette[i % largeColorPalette.length];
+      map[label] = customColors[label] || largeColorPalette[i % largeColorPalette.length];
     });
     return map;
-  }, [currentDataCounts]);
+  }, [currentDataCounts, customColors]);
 
   const pieChartData = useMemo(() => {
     if (!currentDataCounts) return null;
@@ -171,18 +168,17 @@ export default function VitessceViewer({ n, r }) {
     }));
 
     const allObsSets = [
-      { name: "Cell Clusters", path: `obs/leiden_n${n}_r${r}` },
-      {
-        name: "CellTypist (Majority Voting)",
-        path: `obs/CellTypist_majorityvoting_leiden_n${n}_r${r}`,
-      },
+      ...DYNAMIC_ANNOTATIONS.map((ann) => ({
+        name: ann.name,
+        path: `obs/${ann.prefix}_n${n}_r${r}`,
+      })),
       ...EXTRA_OBS_SETS,
     ];
 
     const sortedObsSets = [
       allObsSets.find((set) => set.name === appliedFilters.category),
       ...allObsSets.filter((set) => set.name !== appliedFilters.category),
-    ].filter(Boolean);
+    ].filter((set) => set && set.path); 
 
     const coordinationSpace = {
       embeddingType: { ET_UMAP: "UMAP", ET_SPATIAL: "SPATIAL_VIEW" },
@@ -237,7 +233,7 @@ export default function VitessceViewer({ n, r }) {
         url: `${API_BASE_URL}/${ZARR_DIR}/`,
         options: {
           mappings: {
-            UMAP: { key: `obsm/X_umap_n${n}`, dims: [0, 1] },
+            UMAP: { key: `obsm/${embedding}`, dims: [0, 1] },
             SPATIAL_VIEW: { key: spatialEmbeddingKey, dims: [0, 1] },
           },
         },
@@ -384,8 +380,11 @@ export default function VitessceViewer({ n, r }) {
             value={activeCategory}
             onChange={(e) => setActiveCategory(e.target.value)}
           >
-            <option value="Cell Clusters">Cell Clusters</option>
-            <option value="CellTypist (Majority Voting)">CellTypist</option>
+            {DYNAMIC_ANNOTATIONS.map((ann) => (
+              <option key={ann.name} value={ann.name}>
+                {ann.name}
+              </option>
+            ))}
             {EXTRA_OBS_SETS.map((s) => (
               <option key={s.name} value={s.name}>
                 {s.name}

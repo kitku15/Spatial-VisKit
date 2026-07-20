@@ -3,7 +3,7 @@ import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
-import { annotationColorPalette, themeColors, DATA_DIR } from "./config";
+import { annotationColorPalette, themeColors, DATA_DIR, DYNAMIC_ANNOTATIONS  } from "./config";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -17,11 +17,8 @@ const hexToRgba = (hex, alpha) => {
 };
 
 const CellTypeAnnotation = ({ availableColumns }) => {
-  const annotationCols = availableColumns.filter(
-    (col) =>
-      col.includes("leiden") ||
-      col.includes("CellTypist") ||
-      col.includes("cluster"),
+  const annotationCols = availableColumns.filter((col) =>
+    DYNAMIC_ANNOTATIONS.some((ann) => col.includes(ann.prefix)) || col.includes("cluster")
   );
 
   const [selectedCols, setSelectedCols] = useState(["", ""]);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import VitessceSpatialCCC from "./VitessceSpatialCCC";
-import { API_BASE_URL, ZARR_DIR, ANALYSIS_NAME, DATA_DIR  } from "./config";
+import { API_BASE_URL, ZARR_DIR, ANALYSIS_NAME, DATA_DIR, SPATIAL_CCC_PREFIXES  } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
@@ -59,7 +59,9 @@ export default function SpatialCCC({ n }) {
         const data = await res.json();
         
         const columns = data["column-order"] || [];
-        const interactions = columns.filter((c) => c.startsWith("LR_") || c.startsWith("CCC_"));
+        const interactions = columns.filter((c) => 
+          c.startsWith(SPATIAL_CCC_PREFIXES.LR) || c.startsWith(SPATIAL_CCC_PREFIXES.CCC)
+        );
         
         setAvailableInteractions(interactions);
         if (interactions.length > 0) {
@@ -90,7 +92,7 @@ export default function SpatialCCC({ n }) {
             {availableInteractions.length === 0 && <option value="">Loading...</option>}
             {availableInteractions.map((intx) => (
               <option key={intx} value={intx}>
-                {intx.replace("LR_", "Pair: ").replace("CCC_", "NMF Factor: ")}
+                {intx.replace(SPATIAL_CCC_PREFIXES.LR, "Pair: ").replace(SPATIAL_CCC_PREFIXES.CCC, "NMF Factor: ")}
               </option>
             ))}
           </select>

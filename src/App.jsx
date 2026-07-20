@@ -18,6 +18,8 @@ import DEAnalysis from "./DEAnalysis";
 import ConditionsDE from "./ConditionsDE";
 import SpatialCCC from "./SpatialCCC";
 import ConditionsCausal from "./ConditionsCausal";
+import CompositionAnalysis from "./CompositionAnalysis";
+import ColorSettings from "./ColorSettings";
 
 // --- MAIN LAYOUT COMPONENT ---
 // We now pass our state and functions into the layout as props
@@ -26,9 +28,12 @@ const Layout = ({
   children,
   availableN,
   availableR,
+  availableEmbeddings,
   selectedN,
   setSelectedN,
   selectedR,
+  selectedEmbedding,
+  setSelectedEmbedding,
   setSelectedR,
   handleRefresh,
   sidebarOpen,
@@ -63,6 +68,12 @@ const Layout = ({
       {/* Navigation */}
       <nav className="flex border-b border-borderMain bg-panel shadow-sm">
         <NavLink
+          to="/colors"
+          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
+        >
+          Color Settings
+        </NavLink>
+        <NavLink
           to="/qc"
           className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
         >
@@ -73,6 +84,12 @@ const Layout = ({
           className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
         >
           Interactive Explorer
+        </NavLink>
+        <NavLink
+          to="/composition"
+          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
+        >
+          Composition Analysis
         </NavLink>
         <NavLink
           to="/multiplex"
@@ -193,6 +210,30 @@ const Layout = ({
 
                 <details className="mb-3" open>
                   <summary className="text-sm font-semibold text-textMuted cursor-pointer outline-none">
+                    UMAP Embedding
+                  </summary>
+                  <div className="ml-4 mt-1 space-y-1 bg-borderLight p-2 rounded border border-borderMain">
+                    {availableEmbeddings.length === 0 && (
+                      <span className="text-xs text-textMuted">Scanning...</span>
+                    )}
+                    {availableEmbeddings.map((val) => (
+                      <label key={val} className="block text-sm text-textMain cursor-pointer">
+                        <input
+                          type="radio"
+                          name="embedding_val"
+                          value={val}
+                          checked={selectedEmbedding === val}
+                          onChange={(e) => setSelectedEmbedding(e.target.value)}
+                          className="mr-2 accent-primary"
+                        />
+                        {val}
+                      </label>
+                    ))}
+                  </div>
+                </details>
+
+                <details className="mb-3" open>
+                  <summary className="text-sm font-semibold text-textMuted cursor-pointer outline-none">
                     Resolution (r)
                   </summary>
                   <div className="ml-4 mt-1 space-y-1 bg-borderLight p-2 rounded border border-borderMain">
@@ -239,14 +280,36 @@ export default function App() {
   const [selectedN, setSelectedN] = useState("");
   const [selectedR, setSelectedR] = useState("");
 
+  const [availableEmbeddings, setAvailableEmbeddings] = useState([]);
+  const [selectedEmbedding, setSelectedEmbedding] = useState("");
+
   // 3. "Applied" state (Only updates when "Refresh plot" is clicked)
   const [appliedN, setAppliedN] = useState("");
   const [appliedR, setAppliedR] = useState("");
+  const [appliedEmbedding, setAppliedEmbedding] = useState("");
 
   // 4. For Cell Type Annotation page
   const [allColumns, setAllColumns] = useState([]);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Initialize state from Local Storage (if it exists)
+  const [customColors, setCustomColors] = useState(() => {
+    const savedColors = localStorage.getItem("app_custom_colors");
+    if (savedColors) {
+      try {
+        return JSON.parse(savedColors);
+      } catch (e) {
+        console.warn("Failed to parse colors from local storage", e);
+      }
+    }
+    return {};
+  });
+
+  // Whenever customColors changes, save it to Local Storage
+  useEffect(() => {
+    localStorage.setItem("app_custom_colors", JSON.stringify(customColors));
+  }, [customColors]);
 
   // 4. Read the Zarr file on load to detect what's available!
   useEffect(() => {
@@ -288,6 +351,27 @@ export default function App() {
           setSelectedR(rList[0]);
           setAppliedR(rList[0]);
         }
+        // Scan the zarr metadata to find available embeddings starting with X_
+        let eList = [];
+        try {
+          const zmetaRes = await fetch(`/${ZARR_DIR}/.zmetadata`);
+          if (zmetaRes.ok) {
+            const zmeta = await zmetaRes.json();
+            const eKeys = new Set();
+            Object.keys(zmeta.metadata || {}).forEach((k) => {
+              if (k.startsWith("obsm/X_")) eKeys.add(k.split("/")[1]);
+            });
+            eList = Array.from(eKeys).sort();
+          }
+        } catch (e) {
+          console.warn("Could not load .zmetadata for embeddings.", e);
+        }
+        if (eList.length === 0) eList = ["X_umap"]; // fallback
+        
+        setAvailableEmbeddings(eList);
+        setSelectedEmbedding(eList[0]);
+        setAppliedEmbedding(eList[0]);
+
       } catch (error) {
         console.error(
           "Failed to fetch Zarr metadata. Is the server running?",
@@ -302,43 +386,50 @@ export default function App() {
   const handleRefresh = () => {
     setAppliedN(selectedN);
     setAppliedR(selectedR);
+    setAppliedEmbedding(selectedEmbedding);
   };
 
   // Prevent loading Vitessce until we actually know what N and R to ask for
-  const isReady = appliedN !== "" && appliedR !== "";
+  // const isReady = appliedN !== "" && appliedR !== "";
+  const isReady = appliedN !== "" && appliedR !== "" && appliedEmbedding !== "";
 
   return (
     <Router>
       <Layout
         availableN={availableN}
         availableR={availableR}
+        availableEmbeddings={availableEmbeddings}
         selectedN={selectedN}
         setSelectedN={setSelectedN}
         selectedR={selectedR}
         setSelectedR={setSelectedR}
+        selectedEmbedding={selectedEmbedding}
+        setSelectedEmbedding={setSelectedEmbedding}
         handleRefresh={handleRefresh}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
       >
         <Routes>
+          <Route path="/colors" element={<ColorSettings customColors={customColors} setCustomColors={setCustomColors} />} />
           <Route path="/" element={<Navigate to="/qc" />} />
           <Route path="/qc" element={<QualityControl />} />
           <Route
             path="/interactive"
             element={
               isReady ? (
-                <VitessceViewer n={appliedN} r={appliedR} />
+                <VitessceViewer n={appliedN} r={appliedR} embedding={appliedEmbedding} customColors={customColors} />
               ) : (
                 <div className="p-6">Loading data from Zarr...</div>
               )
             }
           />
+          <Route path="/composition" element={<CompositionAnalysis customColors={customColors} />} />
           <Route path="/multiplex" element={<MultiplexGeneOverlay />} />
           <Route
             path="/stats"
             element={
               isReady ? (
-                <SpatialStats n={appliedN} r={appliedR} />
+                <SpatialStats n={appliedN} r={appliedR} embedding={appliedEmbedding} customColors={customColors} />
               ) : (
                 <div className="p-6">Loading data from Zarr...</div>
               )
@@ -348,7 +439,8 @@ export default function App() {
             path="/tf"
             element={
               isReady ? (
-                <TranscriptionFactor n={appliedN} r={appliedR} />
+                // <TranscriptionFactor n={appliedN} r={appliedR} />
+                <TranscriptionFactor n={appliedN} r={appliedR} embedding={appliedEmbedding} />
               ) : (
                 <div className="p-6">Loading data from Zarr...</div>
               )
@@ -378,7 +470,7 @@ export default function App() {
             path="/annotation"
             element={<CellTypeAnnotation availableColumns={allColumns} />}
           />
-          <Route path="/de-analysis" element={<DEAnalysis />} />
+          <Route path="/de-analysis" element={<DEAnalysis customColors={customColors} />} />
           <Route path="/conditions-de" element={<ConditionsDE />} />
           <Route
             path="/conditions-causal"

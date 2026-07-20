@@ -11,49 +11,102 @@ const createPlotlyComponent =
 const Plot = createPlotlyComponent(Plotly);
 
 export default function ConditionsCausal() {
+  const [metadata, setMetadata] = useState(null);
   const [causalData, setCausalData] = useState(null);
-  const [sourceCell, setSourceCell] = useState("All");
-  const [targetCell, setTargetCell] = useState("All");
-  const [availableSources, setAvailableSources] = useState(["All"]);
-  const [availableTargets, setAvailableTargets] = useState(["All"]);
+  
+  // Selections
+  const [selectedComparison, setSelectedComparison] = useState("");
+  const [selectedSource, setSelectedSource] = useState("");
+  const [selectedTarget, setSelectedTarget] = useState("");
+
+  // Available options
+  const [availableComparisons, setAvailableComparisons] = useState([]);
+  const [availableSources, setAvailableSources] = useState([]);
+  const [availableTargets, setAvailableTargets] = useState([]);
 
   const d3Container = useRef(null);
 
-  // 1. Fetch Data
+  // 1. Fetch Metadata mapping on mount
   useEffect(() => {
-    fetch(`/${DATA_DIR}/causal_ccc/causal_data.json`)
+    fetch(`/${DATA_DIR}/causal_ccc/causal_metadata.json`)
       .then((res) => res.json())
       .then((data) => {
-        setCausalData(data);
-        
-        // Extract unique cell types
-        const sources = Array.from(new Set(data.lr_interactions.map(d => d.source))).sort();
-        const targets = Array.from(new Set(data.tf_activities.map(d => d.cell_type))).sort();
-        
-        setAvailableSources(["All", ...sources]);
-        setAvailableTargets(["All", ...targets]);
-        
-        if (sources.length > 0) setSourceCell(sources[0]);
-        if (targets.length > 0) setTargetCell(targets[0]);
+        setMetadata(data);
+        const comps = Object.keys(data).sort();
+        setAvailableComparisons(comps);
+        if (comps.length > 0) setSelectedComparison(comps[0]);
       })
-      .catch((err) => console.warn("Causal data not found.", err));
+      .catch((err) => console.warn("Causal metadata not found. Did the pipeline run?", err));
   }, []);
 
-  // 2. Prepare Plotly Dot Plot (Ligand-Receptor)
-  const lrPlotData = useMemo(() => {
-    if (!causalData) return null;
+  // 2. Update available sources/targets when Comparison changes
+  useEffect(() => {
+    if (!metadata || !selectedComparison) return;
     
-    let filtered = causalData.lr_interactions;
-    if (sourceCell !== "All") filtered = filtered.filter(d => d.source === sourceCell);
-    if (targetCell !== "All") filtered = filtered.filter(d => d.target === targetCell);
+    const pairsForComp = metadata[selectedComparison] || [];
+    const sources = Array.from(new Set(pairsForComp.map(p => p.source))).sort();
+    setAvailableSources(sources);
+    
+    if (sources.length > 0) {
+      const defaultSource = sources.includes(selectedSource) ? selectedSource : sources[0];
+      setSelectedSource(defaultSource);
+    } else {
+      setSelectedSource("");
+    }
+  }, [selectedComparison, metadata]);
 
-    if (filtered.length === 0) return null;
+  // 3. Update targets when Source changes
+  useEffect(() => {
+    if (!metadata || !selectedComparison || !selectedSource) return;
+    
+    const pairsForComp = metadata[selectedComparison] || [];
+    const validTargets = Array.from(
+      new Set(pairsForComp.filter(p => p.source === selectedSource).map(p => p.target))
+    ).sort();
+    
+    setAvailableTargets(validTargets);
+    if (validTargets.length > 0) {
+        const defaultTarget = validTargets.includes(selectedTarget) ? selectedTarget : validTargets[0];
+        setSelectedTarget(defaultTarget);
+    } else {
+        setSelectedTarget("");
+    }
+  }, [selectedSource, selectedComparison, metadata]);
 
+  // 4. Fetch the specific JSON file when all 3 selections are valid
+  useEffect(() => {
+    if (!metadata || !selectedComparison || !selectedSource || !selectedTarget) {
+        setCausalData(null);
+        return;
+    }
+
+    const pairInfo = metadata[selectedComparison].find(
+        p => p.source === selectedSource && p.target === selectedTarget
+    );
+
+    if (pairInfo && pairInfo.file) {
+        fetch(`/${DATA_DIR}/causal_ccc/${pairInfo.file}`)
+          .then(res => res.json())
+          .then(data => setCausalData(data))
+          .catch(err => {
+              console.error("Failed to load specific causal data json", err);
+              setCausalData(null);
+          });
+    } else {
+        setCausalData(null);
+    }
+  }, [selectedComparison, selectedSource, selectedTarget, metadata]);
+
+
+  // 5. Prepare Plotly Dot Plot (Ligand-Receptor)
+  const lrPlotData = useMemo(() => {
+    if (!causalData || causalData.lr_interactions.length === 0) return null;
+    
+    const filtered = causalData.lr_interactions;
     const x = filtered.map(d => d.ligand);
     const y = filtered.map(d => d.receptor);
     const color = filtered.map(d => d.stat); // Wald Stat
     
-    // Scale marker size by -log10(p-value), bounded between 5 and 20
     const size = filtered.map(d => {
         const nLogP = -Math.log10(Math.max(d.pval, 1e-10));
         return Math.min(Math.max(nLogP * 3, 5), 20); 
@@ -71,26 +124,21 @@ export default function ConditionsCausal() {
         size,
         color,
         colorscale: 'RdBu',
-        reversescale: true, // Red = up, Blue = down
+        reversescale: true, 
         showscale: true,
         colorbar: { title: "Wald Stat", thickness: 15 },
         line: { width: 1, color: themeColors.stroke }
       }
     }];
-  }, [causalData, sourceCell, targetCell]);
+  }, [causalData]);
 
-  // 3. Prepare Plotly Bar Chart (TF Activities)
+  // 6. Prepare Plotly Bar Chart (TF Activities)
   const tfPlotData = useMemo(() => {
-    if (!causalData) return null;
+    if (!causalData || causalData.tf_activities.length === 0) return null;
     
-    let filtered = causalData.tf_activities;
-    if (targetCell !== "All") filtered = filtered.filter(d => d.cell_type === targetCell);
-
-    // Sort by absolute stat to get top shifts
+    let filtered = [...causalData.tf_activities];
     filtered.sort((a, b) => Math.abs(b.stat) - Math.abs(a.stat));
-    filtered = filtered.slice(0, 20); // Top 20 for readability
-
-    if (filtered.length === 0) return null;
+    filtered = filtered.slice(0, 20); 
 
     const x = filtered.map(d => d.stat);
     const y = filtered.map(d => d.tf);
@@ -105,9 +153,9 @@ export default function ConditionsCausal() {
       textposition: 'auto',
       hoverinfo: 'y+text'
     }];
-  }, [causalData, targetCell]);
+  }, [causalData]);
 
-  // 4. Render D3 Force Directed Graph (Intracellular Signaling)
+  // 7. Render D3 Force Directed Graph
   useEffect(() => {
     if (!causalData || !d3Container.current) return;
     
@@ -122,7 +170,6 @@ export default function ConditionsCausal() {
     const width = d3Container.current.clientWidth || 600;
     const height = d3Container.current.clientHeight || 500;
 
-    // Deep copy nodes and links so D3 doesn't mutate React state directly
     const nodes = causalData.network.nodes.map(d => Object.create(d));
     const links = causalData.network.edges.map(d => Object.create(d));
 
@@ -131,47 +178,59 @@ export default function ConditionsCausal() {
       .attr("height", "100%")
       .attr("viewBox", [0, 0, width, height]);
 
-    // Zoom behavior
     const g = svg.append("g");
     svg.call(d3.zoom().on("zoom", (event) => g.attr("transform", event.transform)));
 
-    // Arrow markers
+    // Define 3 types of arrows: activation, inhibition, and unknown
     svg.append("defs").selectAll("marker")
-      .data(["activation", "inhibition"])
+      .data(["activation", "inhibition", "unknown"])
       .join("marker")
       .attr("id", d => `arrow-${d}`)
       .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 18) // Shift arrow back so it doesn't hide under the node circle
+      .attr("refX", 18) 
       .attr("refY", 0)
       .attr("markerWidth", 6)
       .attr("markerHeight", 6)
       .attr("orient", "auto")
       .append("path")
-      .attr("fill", d => d === "activation" ? themeColors.neutral : themeColors.danger)
-      .attr("d", d => d === "activation" ? "M0,-5L10,0L0,5" : "M0,-5L2,-5L2,5L0,5"); // Arrow vs Flat line (inhibition)
+      .attr("fill", d => {
+          if (d === "activation") return themeColors.neutral;
+          if (d === "inhibition") return themeColors.danger;
+          return themeColors.textMuted; // Unknown is grey
+      })
+      .attr("d", d => {
+          if (d === "inhibition") return "M0,-5L2,-5L2,5L0,5"; // Flat head for inhibition
+          return "M0,-5L10,0L0,5"; // Triangle for activation and unknown
+      });
 
-    // Force simulation
     const simulation = d3.forceSimulation(nodes)
       .force("link", d3.forceLink(links).id(d => d.id).distance(50))
       .force("charge", d3.forceManyBody().strength(-200))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collide", d3.forceCollide().radius(20));
 
-    // Links
+    // Properly map edges based on 1 (Act), -1 (Inh), 0 (Unknown)
     const link = g.append("g")
       .selectAll("line")
       .data(links)
       .join("line")
-      .attr("stroke", d => d.sign > 0 ? themeColors.neutral : themeColors.danger)
+      .attr("stroke", d => {
+          if (d.sign > 0) return themeColors.neutral;
+          if (d.sign < 0) return themeColors.danger;
+          return themeColors.textMuted;
+      })
       .attr("stroke-width", d => Math.max(d.weight * 2, 1))
-      .attr("stroke-dasharray", d => d.sign < 0 ? "4,4" : "none") // dashed for inhibition
-      .attr("marker-end", d => `url(#arrow-${d.sign > 0 ? 'activation' : 'inhibition'})`);
+      .attr("stroke-dasharray", d => d.sign < 0 ? "4,4" : "none") 
+      .attr("marker-end", d => {
+          if (d.sign > 0) return "url(#arrow-activation)";
+          if (d.sign < 0) return "url(#arrow-inhibition)";
+          return "url(#arrow-unknown)";
+      });
 
-    // Nodes
     const nodeColor = (type) => {
         if (type === "Receptor") return themeColors.success;
         if (type === "TF") return themeColors.info;
-        return themeColors.neutral; // Kinase
+        return themeColors.neutral; 
     };
 
     const node = g.append("g")
@@ -213,38 +272,52 @@ export default function ConditionsCausal() {
     return () => simulation.stop();
   }, [causalData]);
 
-  if (!causalData) {
-    return <div className="p-6 text-textMuted flex items-center justify-center h-full">Loading Causal Network Data... (If this persists, ensure LIANA_Causal module ran successfully).</div>;
+  if (!metadata) {
+    return <div className="p-6 text-textMuted flex items-center justify-center h-full">Loading Causal Network Data...</div>;
   }
 
   return (
     <div className="p-6 flex flex-col gap-4 h-full bg-app">
       {/* Top Bar: Controls */}
       <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap items-center gap-6">
+        
+        {/* NEW: Condition Comparison Selector */}
+        <label className="text-sm font-semibold flex flex-col gap-1">
+          <span className="text-primary-dark uppercase tracking-wide text-xs">Treatment Comparison</span>
+          <select
+            className="border border-primary bg-primary-light text-primary-dark p-2 rounded outline-none focus:ring-1 focus:ring-primary w-48"
+            value={selectedComparison}
+            onChange={(e) => setSelectedComparison(e.target.value)}
+          >
+            {availableComparisons.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </label>
+
+        <div className="h-8 border-l border-borderLight mx-2"></div>
+
         <label className="text-sm font-semibold flex flex-col gap-1">
           <span className="text-textMuted uppercase tracking-wide text-xs">Sender Cell Type (Ligands)</span>
           <select
             className="border border-borderMain p-2 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
-            value={sourceCell}
-            onChange={(e) => setSourceCell(e.target.value)}
+            value={selectedSource}
+            onChange={(e) => setSelectedSource(e.target.value)}
           >
             {availableSources.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
 
         <label className="text-sm font-semibold flex flex-col gap-1">
-          <span className="text-primary-dark uppercase tracking-wide text-xs">Receiver Cell Type (Receptors & TFs)</span>
+          <span className="text-textMuted uppercase tracking-wide text-xs">Receiver Cell Type (Receptors)</span>
           <select
-            className="border border-primary bg-primary-light text-primary-dark p-2 rounded outline-none w-48 focus:ring-1 focus:ring-primary"
-            value={targetCell}
-            onChange={(e) => setTargetCell(e.target.value)}
+            className="border border-borderMain p-2 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
+            value={selectedTarget}
+            onChange={(e) => setSelectedTarget(e.target.value)}
           >
             {availableTargets.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
 
         <div className="ml-auto flex items-center gap-4">
-            {/* Legend for Network */}
             <div className="flex gap-3 text-xs font-bold text-textMuted border-r border-borderMain pr-4">
                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{backgroundColor: themeColors.success}}></span> Receptor</span>
                 <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full" style={{backgroundColor: themeColors.neutral}}></span> Kinase/Int</span>
@@ -254,13 +327,8 @@ export default function ConditionsCausal() {
         </div>
       </div>
 
-      {/* Main Layout: 3 Panels */}
       <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
-        
-        {/* Left Column: Ligand-Receptor & TF Activities */}
         <div className="flex flex-col w-full lg:w-1/3 gap-4">
-            
-            {/* Panel 1: Condition L-R Pairs */}
             <div className="bg-panel border border-borderLight shadow-sm rounded p-3 flex-1 flex flex-col min-h-0">
                 <h3 className="font-bold text-sm text-textMain text-center mb-1">Condition-Altered Signals (LR)</h3>
                 <p className="text-xs text-center text-textMuted mb-1 truncate">Sender ➔ Receiver</p>
@@ -280,11 +348,10 @@ export default function ConditionsCausal() {
                             useResizeHandler={true}
                             style={{ width: "100%", height: "100%" }}
                         />
-                    ) : (<div className="flex h-full items-center justify-center text-textMuted text-sm">No LR pairs for this selection.</div>)}
+                    ) : (<div className="flex h-full items-center justify-center text-textMuted text-sm text-center px-4">No LR pairs met criteria.</div>)}
                 </div>
             </div>
 
-            {/* Panel 2: TF Activities */}
             <div className="bg-panel border border-borderLight shadow-sm rounded p-3 flex-1 flex flex-col min-h-0">
                 <h3 className="font-bold text-sm text-textMain text-center mb-1">Altered TF Activity</h3>
                 <p className="text-xs text-center text-textMuted mb-1 truncate">Inside Receiver Cell</p>
@@ -304,21 +371,24 @@ export default function ConditionsCausal() {
                             useResizeHandler={true}
                             style={{ width: "100%", height: "100%" }}
                         />
-                    ) : (<div className="flex h-full items-center justify-center text-textMuted text-sm">No TF shifts for this target.</div>)}
+                    ) : (<div className="flex h-full items-center justify-center text-textMuted text-sm text-center px-4">No TF shifts for this target.</div>)}
                 </div>
             </div>
         </div>
 
-        {/* Right Column: Intracellular Causal Network */}
         <div className="w-full lg:w-2/3 bg-panel border border-borderLight shadow-sm rounded flex flex-col overflow-hidden relative">
             <div className="bg-app border-b border-borderLight px-4 py-2 flex justify-between items-center z-10">
                 <h3 className="font-bold text-sm text-textMain">Prior Knowledge Causal Network</h3>
                 <span className="text-xs text-textMuted">Scroll to Zoom. Drag nodes to reposition.</span>
             </div>
             <div className="flex-1 relative bg-panel" ref={d3Container}>
+               {!causalData && (
+                  <div className="flex h-full items-center justify-center text-textMuted text-sm text-center px-4">
+                    Select a valid combination above to load the network.
+                  </div>
+               )}
             </div>
         </div>
-
       </div>
     </div>
   );

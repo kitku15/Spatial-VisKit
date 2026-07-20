@@ -10,7 +10,7 @@ const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
 
-export default function TranscriptionFactor({ n, r }) {
+export default function TranscriptionFactor({ n, r, embedding }) {
   const [viewMode, setViewMode] = useState("UMAP");
   const [selectedSlide, setSelectedSlide] = useState("All");
   const [selectedSample, setSelectedSample] = useState("All");
@@ -193,6 +193,7 @@ export default function TranscriptionFactor({ n, r }) {
               selectedSample={selectedSample}
               n={n}
               minColorRange={minColorRange}
+              embedding={embedding}
             />
           </div>
         </div>
