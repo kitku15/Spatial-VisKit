@@ -29,14 +29,14 @@ const hexToRgb = (hex) => {
 };
 
 export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
-  const [selectedSlide, setSelectedSlide] = useState("All");
-  const [selectedSample, setSelectedSample] = useState("All");
+  const [selectedSlide, setSelectedSlide] = useState("");
+  const [selectedSample, setSelectedSample] = useState("");
   const [activeCategory, setActiveCategory] = useState(DYNAMIC_ANNOTATIONS[0].name);
   const [spatialViewMode, setSpatialViewMode] = useState("segmentations");
 
   const [appliedFilters, setAppliedFilters] = useState({
-    slide: "All",
-    sample: "All",
+    slide: "",
+    sample: "",
     category: "Cell Clusters",
     viewMode: "segmentations",
   });
@@ -58,7 +58,32 @@ export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
         if (res.ok) {
           const data = await res.json();
           setHierarchy(data);
-          setAvailableSlides(["All", ...Object.keys(data)]);
+          
+          const slides = Object.keys(data);
+          setAvailableSlides(["All", ...slides]);
+
+          // --- NEW: Pick a random slide and sample on load ---
+          if (slides.length > 0) {
+            const randomSlide = slides[Math.floor(Math.random() * slides.length)];
+            const samplesInSlide = data[randomSlide] || [];
+            
+            const randomSample = samplesInSlide.length > 0 
+              ? samplesInSlide[Math.floor(Math.random() * samplesInSlide.length)] 
+              : "All";
+
+            // Update the dropdown menus
+            setSelectedSlide(randomSlide);
+            setAvailableSamples(["All", ...samplesInSlide]);
+            setSelectedSample(randomSample);
+
+            // Update the plot filters to trigger the Vitessce load
+            setAppliedFilters((prev) => ({
+              ...prev,
+              slide: randomSlide,
+              sample: randomSample,
+            }));
+          }
+          // ---------------------------------------------------
         }
         const compRes = await fetch(`${API_BASE_URL}/${DATA_DIR}/cell_composition.json`);
         if (compRes.ok) setCompositionData(await compRes.json());
@@ -185,9 +210,7 @@ export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
       embeddingObsRadiusMode: { RM1: "manual" },
       embeddingObsRadius: { R1: VITESSCE_DOT_SIZE },
       obsSetColor: { OSC1: obsSetColor },
-      spatialZoom: { SZ1: -2 },
-      spatialTargetX: { STX1: 0 },
-      spatialTargetY: { STY1: 0 },
+      featureValueColormap: { CVM1: 'viridis' }, 
       spatialSegmentationLayer: {
         SSL1: {
           opacity: 0.5,
@@ -197,36 +220,38 @@ export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
           strokedColor: [100, 100, 100],
         },
       },
+      // 1. ALWAYS initialize obsSetSelection here so lasso state exists
+      obsSetSelection: {
+        OSS1: clickedSlice ? [[appliedFilters.category, clickedSlice]] : null,
+      },
     };
 
+    // 2. ALWAYS map obsSetSelection: "OSS1" across all scopes!
     const umapScopes = {
       embeddingType: "ET_UMAP",
       embeddingObsRadiusMode: "RM1",
       embeddingObsRadius: "R1",
       obsSetColor: "OSC1",
+      obsSetSelection: "OSS1",
     };
     const spatialScopes = {
       spatialSegmentationLayer: "SSL1",
       obsSetColor: "OSC1",
+      obsSetSelection: "OSS1",
     };
     const pointSpatialScopes = {
       embeddingType: "ET_SPATIAL",
       embeddingObsRadiusMode: "RM1",
       embeddingObsRadius: "R1",
       obsSetColor: "OSC1",
+      obsSetSelection: "OSS1",
     };
-    const obsSetsScopes = { obsSetColor: "OSC1" };
+    const obsSetsScopes = { 
+      obsSetColor: "OSC1",
+      obsSetSelection: "OSS1",
+    };
 
-    if (clickedSlice) {
-      coordinationSpace.obsSetSelection = {
-        OSS1: [[appliedFilters.category, clickedSlice]],
-      };
-      umapScopes.obsSetSelection = "OSS1";
-      spatialScopes.obsSetSelection = "OSS1";
-      pointSpatialScopes.obsSetSelection = "OSS1";
-      obsSetsScopes.obsSetSelection = "OSS1";
-    }
-
+    // 3. Keep files 1:1 without artificially flipping Y
     const files = [
       {
         fileType: "anndata-cells.zarr",
@@ -414,14 +439,22 @@ export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
         </div>
       </div>
 
-      <div
+      {/* <div
         className={`flex-1 w-full min-h-0 relative ${appliedFilters.viewMode === "points" ? "flip-spatial-y" : ""}`}
-      >
-        <Vitessce
-          key={`vitessce-${n}-${r}-${appliedFilters.category}-${appliedFilters.slide}-${appliedFilters.sample}-${appliedFilters.viewMode}`}
-          config={config}
-          theme="light"
-        />
+      > */}
+      <div className="flex-1 w-full h-full min-h-0 relative overflow-hidden">
+        {/* Add this check to prevent rendering until a random slide is chosen */}
+        {appliedFilters.slide ? (
+          <Vitessce
+            key={`vitessce-${n}-${r}-${appliedFilters.category}-${appliedFilters.slide}-${appliedFilters.sample}-${appliedFilters.viewMode}`}
+            config={config}
+            theme="light"
+          />
+        ) : (
+          <div className="flex items-center justify-center w-full h-full text-textMuted font-bold">
+            Loading random sample...
+          </div>
+        )}
 
         <div className="absolute bottom-0 right-0 w-1/3 h-[50%] bg-panel z-10 border-t border-l border-borderLight p-3 flex flex-col shadow-[-4px_-4px_8px_-1px_rgba(0,0,0,0.05)]">
           <div className="flex justify-between items-center mb-2 pb-2 border-b border-borderLight">

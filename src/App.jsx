@@ -315,34 +315,30 @@ export default function App() {
   useEffect(() => {
     async function fetchZarrMetadata() {
       try {
-        // Zarr stores AnnData column names in the obs/.zattrs file
+        // 1. Fetch column names to determine available N and R values
         const response = await fetch(`/${ZARR_DIR}/obs/.zattrs`);
         const data = await response.json();
 
-        // Scanpy saves the column names in "column-order"
         const columns = data["column-order"] || [];
-        setAllColumns(columns); // save the full list
+        setAllColumns(columns);
 
         const ns = new Set();
         const rs = new Set();
 
-        // Loop through columns and find ones that match leiden_nX_rY
         columns.forEach((col) => {
           const match = col.match(/leiden_n(\d+)_r([\d.]+)/);
           if (match) {
-            ns.add(match[1]); // Grab the n value
-            rs.add(match[2]); // Grab the r value
+            ns.add(match[1]);
+            rs.add(match[2]);
           }
         });
 
-        // Convert Sets to sorted arrays so the sidebar buttons are in order!
         const nList = Array.from(ns).sort((a, b) => Number(a) - Number(b));
         const rList = Array.from(rs).sort((a, b) => Number(a) - Number(b));
 
         setAvailableN(nList);
         setAvailableR(rList);
 
-        // Automatically set the default selected values to the first items found
         if (nList.length > 0) {
           setSelectedN(nList[0]);
           setAppliedN(nList[0]);
@@ -351,26 +347,65 @@ export default function App() {
           setSelectedR(rList[0]);
           setAppliedR(rList[0]);
         }
-        // Scan the zarr metadata to find available embeddings starting with X_
+
+        // 2. Scan for available UMAP/PCA Embeddings
         let eList = [];
+
+        // Attempt A: Try to read from consolidated metadata (if it exists)
         try {
           const zmetaRes = await fetch(`/${ZARR_DIR}/.zmetadata`);
           if (zmetaRes.ok) {
             const zmeta = await zmetaRes.json();
             const eKeys = new Set();
             Object.keys(zmeta.metadata || {}).forEach((k) => {
-              if (k.startsWith("obsm/X_")) eKeys.add(k.split("/")[1]);
+              if (k.startsWith("obsm/")) {
+                const embName = k.split("/")[1];
+                // Ignore zarr internal files like .zgroup or .zattrs
+                if (embName && !embName.startsWith(".")) {
+                  eKeys.add(embName);
+                }
+              }
             });
             eList = Array.from(eKeys).sort();
           }
         } catch (e) {
-          console.warn("Could not load .zmetadata for embeddings.", e);
+          console.warn("Could not load .zmetadata, trying fallback probe...");
         }
-        if (eList.length === 0) eList = ["X_umap"]; // fallback
+
+        // Attempt B: Probing Fallback (If .zmetadata doesn't exist)
+        // We know the pattern from your image is X_umap_n{N}_X_pca
+        if (eList.length === 0) {
+          const potentialEmbeddings = ["X_umap"];
+          nList.forEach((n) => {
+            potentialEmbeddings.push(`X_umap_n${n}_X_pca`);
+            potentialEmbeddings.push(`X_umap_n${n}`); // Added just in case
+          });
+
+          // Fire off tiny requests to see which ones actually exist in the Zarr
+          const checks = await Promise.all(
+            potentialEmbeddings.map(async (emb) => {
+              try {
+                const res = await fetch(`/${ZARR_DIR}/obsm/${emb}/.zarray`, { method: "HEAD" });
+                return res.ok ? emb : null;
+              } catch {
+                return null;
+              }
+            })
+          );
+
+          // Filter out the ones that failed
+          eList = checks.filter(Boolean);
+        }
+
+        // Absolute fallback if everything fails
+        if (eList.length === 0) eList = ["X_umap"];
+
+        // Eliminate any potential duplicates and set state
+        const uniqueElist = Array.from(new Set(eList));
         
-        setAvailableEmbeddings(eList);
-        setSelectedEmbedding(eList[0]);
-        setAppliedEmbedding(eList[0]);
+        setAvailableEmbeddings(uniqueElist);
+        setAppliedEmbedding(uniqueElist[0]);
+        setSelectedEmbedding(uniqueElist[0]);
 
       } catch (error) {
         console.error(
@@ -381,7 +416,7 @@ export default function App() {
     }
 
     fetchZarrMetadata();
-  }, []); // The empty bracket means this runs exactly once when the app opens
+  }, []);
 
   const handleRefresh = () => {
     setAppliedN(selectedN);
