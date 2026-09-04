@@ -4,7 +4,6 @@ import {
   API_BASE_URL,
   ZARR_DIR,
   SPATIAL_KEY,
-  VITESSCE_DOT_SIZE,
   DATA_DIR,
   MICROENV_PREFIX,
   PRIMARY_ANNOTATION_PREFIX,
@@ -22,17 +21,13 @@ export default function VitessceCCC({
   r,
   selectedMicroenv,
   cellColorMap,
-  spatialViewMode,
 }) {
   const config = useMemo(() => {
-    const spatialEmbeddingKey =
-      selectedMicroenv === "All"
-        ? `obsm/${SPATIAL_KEY}`
-        : `obsm/${MICROENV_PREFIX}${selectedMicroenv}`;
+    const spatialEmbeddingKey = `obsm/${SPATIAL_KEY}`;
     const segmentationsFile =
       selectedMicroenv === "All"
-        ? `/${DATA_DIR}/segmentations/segmentations.json`
-        : `/${DATA_DIR}/segmentations/segmentations_${MICROENV_PREFIX.replace("spatial_", "")}${selectedMicroenv}.json`; 
+        ? `${DATA_DIR}/segmentations/segmentations.json`
+        : `${DATA_DIR}/segmentations/segmentations_microenv_${selectedMicroenv}.json`; 
     const cellTypeName = "Cell Annotation";
     const cellTypePath = `obs/${PRIMARY_ANNOTATION_PREFIX}`;
     const obsSetColor = cellColorMap.map((c) => ({
@@ -61,35 +56,25 @@ export default function VitessceCCC({
         ],
         coordinationValues: { obsType: "cell" },
       },
-    ];
-
-    if (spatialViewMode === "segmentations") {
-      files.push({
+      {
         fileType: "obsLocations.anndata.zarr",
         url: `${API_BASE_URL}/${ZARR_DIR}/`,
         options: { path: spatialEmbeddingKey },
         coordinationValues: { obsType: "cell" },
-      });
-      files.push({
+      },
+      {
         fileType: "obsSegmentations.json",
-        url: `${API_BASE_URL}/${encodeURIComponent(segmentationsFile)}`,
+        url: `${API_BASE_URL}/${segmentationsFile}`,
         coordinationValues: { obsType: "cell" },
-      });
-    }
+      }
+    ];
 
-    const pointScopes = {
-      embeddingType: "ET1",
-      obsSetColor: "OSC1",
-      obsSetSelection: "OSS1",
-      embeddingObsRadiusMode: "RM1",
-      embeddingObsOpacityMode: "OM1",
-      embeddingObsRadius: "ECR1",
-      embeddingObsOpacity: "ECO1",
-    };
     const spatialScopes = {
+      spatialPointLayer: "SPL1", 
       spatialSegmentationLayer: "SSL1",
       obsSetColor: "OSC1",
       obsSetSelection: "OSS1",
+      obsColorEncoding: "OCE1"
     };
 
     return {
@@ -103,13 +88,9 @@ export default function VitessceCCC({
         obsSetSelection: {
           OSS1: obsSetSelection.length > 0 ? obsSetSelection : null,
         },
-        embeddingObsRadiusMode: { RM1: "manual" },
-        embeddingObsOpacityMode: { OM1: "manual" },
-        embeddingObsRadius: { ECR1: VITESSCE_DOT_SIZE },
-        embeddingObsOpacity: { ECO1: 1 },
-        spatialZoom: { SZ1: -2 },
-        spatialTargetX: { STX1: 0 },
-        spatialTargetY: { STY1: 0 },
+        spatialPointLayer: {
+          SPL1: { visible: true, opacity: 0, radius: 0 },
+        },
         spatialSegmentationLayer: {
           SSL1: {
             opacity: 0.5,
@@ -119,35 +100,29 @@ export default function VitessceCCC({
             strokedColor: [100, 100, 100],
           },
         },
+        obsSetFilter: {
+          OSF1: selectedMicroenv !== "All"
+            ? [["Microenvironment", selectedMicroenv]]
+            : null
+        },
+        obsColorEncoding: { OCE1: "cellSetSelection" }
       },
       layout: [
-        spatialViewMode === "segmentations"
-          ? {
-              component: "spatial",
-              coordinationScopes: spatialScopes,
-              x: 0,
-              y: 0,
-              w: 12,
-              h: 12,
-            }
-          : {
-              component: "scatterplot",
-              coordinationScopes: pointScopes,
-              x: 0,
-              y: 0,
-              w: 12,
-              h: 12,
-            },
+        {
+          component: "spatial",
+          coordinationScopes: { ...spatialScopes, obsSetFilter: "OSF1" },
+          x: 0, y: 0, w: 12, h: 12,
+        }
       ],
     };
-  }, [n, r, selectedMicroenv, cellColorMap, spatialViewMode]);
+  }, [n, r, selectedMicroenv, cellColorMap]);
 
   return (
     <div
-      className={`w-full h-full relative border border-borderLight rounded overflow-hidden shadow-inner bg-panel ${spatialViewMode === "points" ? "flip-spatial-y" : ""}`}
+      className="w-full h-full relative border border-borderLight rounded overflow-hidden shadow-inner bg-panel"
     >
       <Vitessce
-        key={`vitessce-ccc-${n}-${r}-${selectedMicroenv}-${spatialViewMode}`}
+        key={`vitessce-ccc-${n}-${r}-${selectedMicroenv}`}
         config={config}
         theme="light"
       />

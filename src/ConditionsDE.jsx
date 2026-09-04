@@ -4,7 +4,7 @@ import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
-import { themeColors, DATA_DIR } from "./config";
+import { themeColors, DATA_DIR, API_BASE_URL } from "./config";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -102,12 +102,10 @@ export default function ConditionsDE() {
     async function initData() {
       try {
         const meta = await fetch(
-          `${DATA_DIR}/conditions_de_analysis/conditions_de_metadata.json`,
+          `${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/conditions_de_metadata.json`,
         ).then((r) => r.json());
-        const genes = await fetch(`${DATA_DIR}/genes_list.json`).then((r) => r.json());
-        const clusters = await fetch(`${DATA_DIR}/cell_clusters.json`).then((r) =>
-          r.json(),
-        );
+        const genes = await fetch(`${API_BASE_URL}/api/genes`).then((r) => r.json());
+        const clusters = await fetch(`${API_BASE_URL}/api/obs`).then((r) => r.json());
         const chunks = await fetch(`${DATA_DIR}/gene_chunk_index.json`).then((r) => r.json()).catch(() => ({}));
         setChunkIndex(chunks);
 
@@ -145,13 +143,13 @@ export default function ConditionsDE() {
     if (!selectedCellType || !selectedComparison) return;
 
     fetch(
-      `${DATA_DIR}/conditions_de_analysis/${selectedCellType}_comparison_${selectedComparison}.json`,
+      `${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/${selectedCellType}_comparison_${selectedComparison}.json`,
     )
       .then((r) => r.json())
       .then(setVolcanoData)
       .catch(() => setVolcanoData(null));
 
-    d3.csv(`${DATA_DIR}/conditions_de_analysis/summary_${selectedCellType}.csv`)
+    d3.csv(`${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/summary_${selectedCellType}.csv`)
       .then((data) => {
         const compRow = data.find((d) => d.Comparison === selectedComparison);
         if (compRow) {
@@ -192,18 +190,14 @@ export default function ConditionsDE() {
   useEffect(() => {
     panelGenes.forEach((g) => {
       if (g && !geneExpressions[g.safe]) {
-        const chunkFile = chunkIndex[g.safe];
-        if (!chunkFile) return;
-        
-        fetch(`${DATA_DIR}/genes/${chunkFile}.json`)
+        fetch(`${API_BASE_URL}/api/expression/${encodeURIComponent(g.safe)}`)
           .then((r) => r.json())
           .then((data) => {
-             // Cache all genes from this chunk
             setGeneExpressions((prev) => ({ ...prev, ...data }));
           });
       }
     });
-  }, [panelGenes, geneExpressions, chunkIndex]);
+  }, [panelGenes, geneExpressions]);
 
   const handleGeneChange = (index, newGene) => {
     const updated = [...panelGenes];

@@ -1,0 +1,16 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MODULE_10_DIR=/data
+    volumes:
+      - ./public/10_WebVis:/data
+
+  frontend:
+    build: .             # <--- Changed this to build the root directory!
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import * as d3 from "d3";
-import { themeColors, defaultCategoryPalette, DATA_DIR } from "./config";
+import { themeColors, defaultCategoryPalette, DATA_DIR, API_BASE_URL } from "./config";
 import VitessceCCC from "./VitessceCCC";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
@@ -21,7 +21,6 @@ export default function CellCellCommunication({ n, r }) {
 
   const [minCells, setMinCells] = useState(50);
   const [colorBy, setColorBy] = useState("Receiver");
-  const [spatialViewMode, setSpatialViewMode] = useState("points");
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,8 +37,8 @@ export default function CellCellCommunication({ n, r }) {
     async function loadData() {
       try {
         const [edgesRes, microRes] = await Promise.all([
-          fetch(`${DATA_DIR}/cpdb_edges.json`),
-          fetch(`${DATA_DIR}/cpdb_microenvs.json`),
+          fetch(`${API_BASE_URL}/${DATA_DIR}/cpdb_edges.json`),
+          fetch(`${API_BASE_URL}/${DATA_DIR}/cpdb_microenvs.json`),
         ]);
 
         const edgesData = await edgesRes.json();
@@ -455,27 +454,6 @@ export default function CellCellCommunication({ n, r }) {
               <option value="Interaction">Ligand-Receptor</option>
             </select>
           </label>
-
-          {/* --- MOVED VITESSCE TOGGLE UP HERE --- */}
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-textMuted mb-1 uppercase tracking-wider">
-              Spatial View
-            </span>
-            <div className="flex bg-app rounded p-1 border border-borderMain h-[38px] items-center">
-              <button
-                className={`px-2 py-1 rounded text-xs font-bold transition ${spatialViewMode === "points" ? "bg-primary-light text-primary-dark shadow-sm" : "text-textMuted hover:text-textMain"}`}
-                onClick={() => setSpatialViewMode("points")}
-              >
-                Points
-              </button>
-              <button
-                className={`px-2 py-1 rounded text-xs font-bold transition ${spatialViewMode === "segmentations" ? "bg-primary-light text-primary-dark shadow-sm" : "text-textMuted hover:text-textMain"}`}
-                onClick={() => setSpatialViewMode("segmentations")}
-              >
-                Polygons
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="ml-auto flex items-center">
@@ -553,7 +531,6 @@ export default function CellCellCommunication({ n, r }) {
               r={r}
               selectedMicroenv={selectedMicroenv}
               cellColorMap={cellColorMap}
-              spatialViewMode={spatialViewMode}
             />
           </div>
         </div>

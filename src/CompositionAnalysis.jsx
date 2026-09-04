@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
-import { DATA_DIR, themeColors, largeColorPalette } from "./config";
+import { DATA_DIR, themeColors, largeColorPalette, API_BASE_URL } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
@@ -20,7 +20,7 @@ export default function CompositionAnalysis({ customColors = {} }) {
 
   // Fetch the data
   useEffect(() => {
-    fetch(`/${DATA_DIR}/cell_clusters.json`)
+    fetch(`${API_BASE_URL}/api/obs`)
       .then((res) => res.json())
       .then((data) => {
         setObsData(data);

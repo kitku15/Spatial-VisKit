@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { DATA_DIR, largeColorPalette } from "./config";
+import { DATA_DIR, largeColorPalette, API_BASE_URL } from "./config";
 
 // Maximum number of unique categories to render color pickers for.
 // Anything above this is likely continuous data or cell barcodes.
@@ -11,7 +11,8 @@ export default function ColorSettings({ customColors, setCustomColors }) {
   const [selectedCol, setSelectedCol] = useState("");
 
   useEffect(() => {
-    fetch(`/${DATA_DIR}/cell_clusters.json`)
+    fetch(`${API_BASE_URL}/api/obs`)
+    // fetch(`/${DATA_DIR}/cell_clusters.json`)
       .then((res) => res.json())
       .then((data) => {
         setObsData(data);

@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 *.tar
 data*/
+10_*
+public/unused

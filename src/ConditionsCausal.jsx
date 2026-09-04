@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
-import { themeColors, DATA_DIR } from "./config";
+import { themeColors, DATA_DIR, API_BASE_URL  } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
@@ -28,7 +28,7 @@ export default function ConditionsCausal() {
 
   // 1. Fetch Metadata mapping on mount
   useEffect(() => {
-    fetch(`/${DATA_DIR}/causal_ccc/causal_metadata.json`)
+    fetch(`${API_BASE_URL}/${DATA_DIR}/causal_ccc/causal_metadata.json`)
       .then((res) => res.json())
       .then((data) => {
         setMetadata(data);
@@ -85,7 +85,7 @@ export default function ConditionsCausal() {
     );
 
     if (pairInfo && pairInfo.file) {
-        fetch(`/${DATA_DIR}/causal_ccc/${pairInfo.file}`)
+        fetch(`${API_BASE_URL}/${DATA_DIR}/causal_ccc/${pairInfo.file}`)
           .then(res => res.json())
           .then(data => setCausalData(data))
           .catch(err => {
@@ -219,7 +219,7 @@ export default function ConditionsCausal() {
           if (d.sign < 0) return themeColors.danger;
           return themeColors.textMuted;
       })
-      .attr("stroke-width", d => Math.max(d.weight * 2, 1))
+      .attr("stroke-width", 2)
       .attr("stroke-dasharray", d => d.sign < 0 ? "4,4" : "none") 
       .attr("marker-end", d => {
           if (d.sign > 0) return "url(#arrow-activation)";

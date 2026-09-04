@@ -6,7 +6,9 @@ import {
   channelColorMap,
   defaultChannelColorNames,
   DATA_DIR,
-} from "./config";
+  API_BASE_URL,
+} 
+from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
@@ -100,7 +102,7 @@ export default function MultiplexGeneOverlay() {
 
   const [channels, setChannels] = useState([]);
   const [exprData, setExprData] = useState({});
-  const [chunkIndex, setChunkIndex] = useState({});
+  // const [chunkIndex, setChunkIndex] = useState({});
 
   const [pointSize, setPointSize] = useState(4);
   const [showBackground, setShowBackground] = useState(true);
@@ -109,25 +111,23 @@ export default function MultiplexGeneOverlay() {
     async function loadData() {
       setIsLoading(true);
       try {
-        const [metaRes, geneRes, locRes, chunkRes] = await Promise.all([
-          fetch(`${DATA_DIR}/spatial_metadata_${ANALYSIS_NAME}.json`).catch(
-            () => null,
-          ),
-          fetch(`${DATA_DIR}/genes_list.json`),
-          fetch(`${DATA_DIR}/locations_optimized.json`),
-          fetch(`${DATA_DIR}/gene_chunk_index.json`).catch(() => null),
+        const [metaRes, geneRes, locRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/metadata`).catch(() => null),
+          fetch(`${API_BASE_URL}/api/genes`),
+          fetch(`${API_BASE_URL}/api/locations`),
         ]);
 
-        const metaData = metaRes ? await metaRes.json() : { All: ["All"] };
+        const metaData = metaRes ? await metaRes.json() : { hierarchy: { All: ["All"] } };
         const geneList = await geneRes.json();
         const locations = await locRes.json();
         
 
-        setHierarchy(metaData);
-        const slides = Object.keys(metaData);
+        setHierarchy(metaData.hierarchy);
+        const slides = Object.keys(metaData.hierarchy);
         setAvailableSlides(["__ALL__", ...slides]);
-        const chunkData = chunkRes ? await chunkRes.json() : {};
-        setChunkIndex(chunkData);
+        
+        // const chunkData = chunkRes ? await chunkRes.json() : {};
+        // setChunkIndex(chunkData);
 
         if (slides.length === 1) setSelectedSlide(slides[0]);
 
@@ -180,22 +180,16 @@ export default function MultiplexGeneOverlay() {
   useEffect(() => {
     channels.forEach((ch) => {
       if (ch.gene && !exprData[ch.gene.safe]) {
-        const chunkFile = chunkIndex[ch.gene.safe];
-        if (!chunkFile) return;
-
         setExprData((prev) => ({ ...prev, [ch.gene.safe]: { loading: true } }));
-        fetch(`${DATA_DIR}/genes/${chunkFile}.json`)
+        fetch(`${API_BASE_URL}/api/expression/${encodeURIComponent(ch.gene.safe)}`)
           .then((r) => r.json())
           .then((data) => {
-            // Cache ALL genes from this chunk instantly!
             setExprData((prev) => ({ ...prev, ...data }));
           })
-          .catch((err) =>
-            console.error(`Failed to load gene chunk: ${chunkFile}`, err),
-          );
+          .catch((err) => console.error(`Failed to load gene`, err));
       }
     });
-  }, [channels, exprData, chunkIndex]);
+  }, [channels, exprData]);
 
   const updateChannel = (id, field, value) => {
     setChannels((prev) =>

@@ -6,7 +6,7 @@ import {
   NavLink,
   Navigate,
 } from "react-router-dom";
-import { ZARR_DIR, PROJECT_TITLE, DATA_DIR} from "./config";
+import { ZARR_DIR, PROJECT_TITLE, DATA_DIR, API_BASE_URL} from "./config";
 import VitessceViewer from "./VitessceViewer";
 import CellTypeAnnotation from "./CellTypeAnnotation";
 import CellCellCommunication from "./CellCellCommunication";
@@ -216,7 +216,13 @@ const Layout = ({
                     {availableEmbeddings.length === 0 && (
                       <span className="text-xs text-textMuted">Scanning...</span>
                     )}
-                    {availableEmbeddings.map((val) => (
+                    {availableEmbeddings
+                      .filter((val) => {
+                        // FIX: Only show base embeddings (X_umap) OR embeddings matching the selected N
+                        const match = val.match(/_n(\d+)/);
+                        return !match || match[1] === String(selectedN);
+                      })
+                      .map((val) => (
                       <label key={val} className="block text-sm text-textMain cursor-pointer">
                         <input
                           type="radio"
@@ -315,18 +321,19 @@ export default function App() {
   useEffect(() => {
     async function fetchZarrMetadata() {
       try {
-        // 1. Fetch column names to determine available N and R values
-        const response = await fetch(`/${ZARR_DIR}/obs/.zattrs`);
+        // 1. Fetch metadata from the blazing fast Python API
+        const response = await fetch(`${API_BASE_URL}/api/metadata`);
         const data = await response.json();
 
-        const columns = data["column-order"] || [];
+        const columns = data.obs_columns || [];
         setAllColumns(columns);
 
         const ns = new Set();
         const rs = new Set();
 
+        // FIX: Made the regex generic to catch 'leidenpca_n15_r0.5' or ANY cluster name!
         columns.forEach((col) => {
-          const match = col.match(/leiden_n(\d+)_r([\d.]+)/);
+          const match = col.match(/_n(\d+)_r([\d.]+)/); 
           if (match) {
             ns.add(match[1]);
             rs.add(match[2]);
@@ -339,79 +346,46 @@ export default function App() {
         setAvailableN(nList);
         setAvailableR(rList);
 
+        // FIX: Added Failsafes! If it finds N/R, it uses them. If not, it unlocks Vitessce anyway!
         if (nList.length > 0) {
           setSelectedN(nList[0]);
           setAppliedN(nList[0]);
+        } else {
+          setSelectedN("N/A");
+          setAppliedN("N/A");
         }
+
         if (rList.length > 0) {
           setSelectedR(rList[0]);
           setAppliedR(rList[0]);
+        } else {
+          setSelectedR("N/A");
+          setAppliedR("N/A");
         }
 
-        // 2. Scan for available UMAP/PCA Embeddings
-        let eList = [];
+        // 2. Scan for embeddings
+        const eList = ["X_umap", "X_pca"];
+        nList.forEach((n) => {
+            eList.push(`X_umap_n${n}_X_pca`);
+            eList.push(`X_umap_n${n}`);
+            eList.push(`X_umap_n${n}_X_scANVI`); 
+        });
 
-        // Attempt A: Try to read from consolidated metadata (if it exists)
-        try {
-          const zmetaRes = await fetch(`/${ZARR_DIR}/.zmetadata`);
-          if (zmetaRes.ok) {
-            const zmeta = await zmetaRes.json();
-            const eKeys = new Set();
-            Object.keys(zmeta.metadata || {}).forEach((k) => {
-              if (k.startsWith("obsm/")) {
-                const embName = k.split("/")[1];
-                // Ignore zarr internal files like .zgroup or .zattrs
-                if (embName && !embName.startsWith(".")) {
-                  eKeys.add(embName);
-                }
-              }
-            });
-            eList = Array.from(eKeys).sort();
-          }
-        } catch (e) {
-          console.warn("Could not load .zmetadata, trying fallback probe...");
-        }
-
-        // Attempt B: Probing Fallback (If .zmetadata doesn't exist)
-        // We know the pattern from your image is X_umap_n{N}_X_pca
-        if (eList.length === 0) {
-          const potentialEmbeddings = ["X_umap"];
-          nList.forEach((n) => {
-            potentialEmbeddings.push(`X_umap_n${n}_X_pca`);
-            potentialEmbeddings.push(`X_umap_n${n}`); // Added just in case
-          });
-
-          // Fire off tiny requests to see which ones actually exist in the Zarr
-          const checks = await Promise.all(
-            potentialEmbeddings.map(async (emb) => {
-              try {
-                const res = await fetch(`/${ZARR_DIR}/obsm/${emb}/.zarray`, { method: "HEAD" });
-                return res.ok ? emb : null;
-              } catch {
-                return null;
-              }
-            })
-          );
-
-          // Filter out the ones that failed
-          eList = checks.filter(Boolean);
-        }
-
-        // Absolute fallback if everything fails
-        if (eList.length === 0) eList = ["X_umap"];
-
-        // Eliminate any potential duplicates and set state
         const uniqueElist = Array.from(new Set(eList));
-        
         setAvailableEmbeddings(uniqueElist);
-        setAppliedEmbedding(uniqueElist[0]);
-        setSelectedEmbedding(uniqueElist[0]);
+        
+        // Ensure appliedEmbedding is never empty
+        setAppliedEmbedding(uniqueElist[0] || "none");
+        setSelectedEmbedding(uniqueElist[0] || "none");
 
       } catch (error) {
-        console.error(
-          "Failed to fetch Zarr metadata. Is the server running?",
-          error,
-        );
+        console.error("Failed to fetch API metadata.", error);
+        setSelectedN("N/A");
+        setAppliedN("N/A");
+        setSelectedR("N/A");
+        setAppliedR("N/A");
+        setAppliedEmbedding("X_umap");
+        setSelectedEmbedding("X_umap");
       }
     }
 

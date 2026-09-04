@@ -3,8 +3,7 @@ import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
-import { annotationColorPalette, themeColors, DATA_DIR, DYNAMIC_ANNOTATIONS  } from "./config";
-
+import { annotationColorPalette, themeColors, DATA_DIR, DYNAMIC_ANNOTATIONS, EXTRA_OBS_SETS, API_BASE_URL } from "./config";
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -17,8 +16,11 @@ const hexToRgba = (hex, alpha) => {
 };
 
 const CellTypeAnnotation = ({ availableColumns }) => {
+  const extraPaths = EXTRA_OBS_SETS.map((set) => set.path.replace("obs/", ""));
   const annotationCols = availableColumns.filter((col) =>
-    DYNAMIC_ANNOTATIONS.some((ann) => col.includes(ann.prefix)) || col.includes("cluster")
+    DYNAMIC_ANNOTATIONS.some((ann) => col.includes(ann.prefix)) || 
+    col.includes("cluster") || 
+    extraPaths.includes(col)
   );
 
   const [selectedCols, setSelectedCols] = useState(["", ""]);
@@ -100,7 +102,7 @@ const CellTypeAnnotation = ({ availableColumns }) => {
         const colB = selectedCols[i + 1];
         const fileName = `${colA}_vs_${colB}.json`;
 
-        const response = await fetch(`${DATA_DIR}/sankeys/${fileName}`);
+        const response = await fetch(`${API_BASE_URL}/api/sankey?col_a=${colA}&col_b=${colB}`);
         if (!response.ok) {
           throw new Error(`Data not found for: ${colA} → ${colB}`);
         }

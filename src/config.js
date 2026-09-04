@@ -1,21 +1,15 @@
 // ./config.js
 
-export const API_BASE_URL = "http://192.168.0.165:9001";
-// export const API_BASE_URL = "http://172.27.16.1:9001";
-
-
+export const API_BASE_URL = "http://127.0.0.1:8000";
 export const ANALYSIS_NAME = "tyler_manual";
-export const DATA_DIR = "data_tyler_final";
-export const ZARR_DIR = `${DATA_DIR}/adata_${ANALYSIS_NAME}.zarr`;
-export const TF_ZARR_DIR = `${DATA_DIR}/adata_${ANALYSIS_NAME}_tf.zarr`;
+export const DATA_DIR = "data/aux_data";
+export const ZARR_DIR = `data/adata_${ANALYSIS_NAME}_web.zarr`;
+export const TF_ZARR_DIR = `data/adata_${ANALYSIS_NAME}_tf_web.zarr`;
 
 // --- PROJECT SETTINGS ---
-// export const PROJECT_TITLE = "10X Xenium: Sara - Lung";
 export const PROJECT_TITLE = "CosMx SMI: Tyler - FFPE Human Colonic Biopsies";
-// export const PROJECT_TITLE = "CosMx SMI:  - Mouse Brain";
 
 // "global" for CosMx, "spatial" for Xenium
-// export const SPATIAL_KEY = "spatial";
 export const SPATIAL_KEY = "global";
 
 // Visual size of dots in Vitessce (CosMx ~ 2.0, Xenium ~ 0.5)
@@ -44,7 +38,7 @@ export const EXTRA_OBS_SETS = [
   { name: "Disease Type", path: "obs/DiseaseType" },
   { name: "Treatment Response", path: "obs/TreatmentResponse" },
   { name: "Sample ID", path: "obs/sample_id" },
-  { name: "Slide ID", path: "obs/slide_id" },
+  { name: "Slide ID", path: "obs/slide_ID" },
   { name: "Spatial Microenvironment", path: "obs/spatial_microenvironment" },
   { name: "scANVI", path: "obs/C_scANVI" },
   { name: "Coarse Cell Type", path: "obs/Coarse_Celltype" },

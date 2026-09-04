@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
-import { largeColorPalette, themeColors, DATA_DIR } from "./config";
+import { largeColorPalette, themeColors, DATA_DIR, API_BASE_URL } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
@@ -99,22 +99,18 @@ export default function DEAnalysis({ customColors = {} }) {
 
   useEffect(() => {
     async function initData() {
-      const meta = await fetch(`${DATA_DIR}/de_analysis/de_metadata.json`).then((r) =>
+      const meta = await fetch(`${API_BASE_URL}/${DATA_DIR}/de_analysis/de_metadata.json`).then((r) =>
         r.json(),
       );
       const annos = Object.keys(meta);
       setAnnotations(annos);
       if (annos.length > 0) setSelectedAnnotation(annos[0]);
-      fetch(`${DATA_DIR}/cell_clusters.json`)
+      fetch(`${API_BASE_URL}/api/obs`)
         .then((r) => r.json())
         .then(setClusterLabels);
-      fetch(`${DATA_DIR}/genes_list.json`)
+      fetch(`${API_BASE_URL}/api/genes`)
         .then((r) => r.json())
         .then(setAvailableGenes);
-      fetch(`${DATA_DIR}/gene_chunk_index.json`)
-        .then((r) => r.json())
-        .then(setChunkIndex)
-        .catch(() => setChunkIndex({}));
     }
     initData();
   }, []);
@@ -123,7 +119,7 @@ export default function DEAnalysis({ customColors = {} }) {
     if (!selectedAnnotation) return;
     async function fetchTable() {
       const tableCsv = await d3.csv(
-        `${DATA_DIR}/de_analysis/top_DEgenes_${selectedAnnotation}.csv`,
+        `${API_BASE_URL}/${DATA_DIR}/de_analysis/top_DEgenes_${selectedAnnotation}.csv`,
       );
       setTopGenesTable(tableCsv);
       if (tableCsv.length > 0) setSelectedCluster(tableCsv[0]["Cluster Name"]);
@@ -152,7 +148,7 @@ export default function DEAnalysis({ customColors = {} }) {
     const safeCluster = selectedCluster
       .replace(/[^\w\s-]/g, "")
       .replace(/\s+/g, "_");
-    fetch(`${DATA_DIR}/de_analysis/${selectedAnnotation}_cluster_${safeCluster}.json`)
+    fetch(`${API_BASE_URL}/${DATA_DIR}/de_analysis/${selectedAnnotation}_cluster_${safeCluster}.json`)
       .then((r) => r.json())
       .then(setVolcanoData)
       .catch(() => setVolcanoData(null));
@@ -160,14 +156,11 @@ export default function DEAnalysis({ customColors = {} }) {
 
   useEffect(() => {
     if (gene1) {
-      const chunkFile = chunkIndex[gene1.safe];
-      if (chunkFile) {
-        fetch(`${DATA_DIR}/genes/${chunkFile}.json`)
-          .then((r) => r.json())
-          .then((data) => setExpr1(data[gene1.safe]));
-      }
+      fetch(`${API_BASE_URL}/api/expression/${encodeURIComponent(gene1.safe)}`)
+        .then((r) => r.json())
+        .then((data) => setExpr1(data[gene1.safe]));
     }
-  }, [gene1, chunkIndex]);
+  }, [gene1]);
 
   const clusterColorMap = useMemo(() => {
     if (
