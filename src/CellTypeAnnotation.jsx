@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
-import { annotationColorPalette, themeColors, DATA_DIR, DYNAMIC_ANNOTATIONS, EXTRA_OBS_SETS, API_BASE_URL } from "./config";
+import { annotationColorPalette, themeColors, API_BASE_URL } from "./config";
+
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
@@ -15,21 +16,43 @@ const hexToRgba = (hex, alpha) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const CellTypeAnnotation = ({ availableColumns }) => {
-  const extraPaths = EXTRA_OBS_SETS.map((set) => set.path.replace("obs/", ""));
-  const annotationCols = availableColumns.filter((col) =>
-    DYNAMIC_ANNOTATIONS.some((ann) => col.includes(ann.prefix)) || 
-    col.includes("cluster") || 
-    extraPaths.includes(col)
-  );
+export default function CellTypeAnnotation({
+  availableColumns,
+  datasetConfig,
+}) {
+  const allowedOptions = useMemo(() => {
+    const dynamicAnnotations = datasetConfig?.dynamic_annotations || [];
+    const extraObsSets = datasetConfig?.extra_obs_sets || [];
+    const options = [];
 
-  const [selectedCols, setSelectedCols] = useState(["", ""]);
+    availableColumns.forEach((col) => {
+      const match = dynamicAnnotations.find((ann) =>
+        col.startsWith(ann.prefix),
+      );
+      if (match) {
+        options.push({ value: col, label: col });
+      }
+    });
 
-  useEffect(() => {
-    if (annotationCols.length >= 2 && !selectedCols[0] && !selectedCols[1]) {
-      setSelectedCols([annotationCols[0], annotationCols[1]]);
+    extraObsSets.forEach((set) => {
+      const rawCol = set.path.replace("obs/", "");
+      if (availableColumns.includes(rawCol)) {
+        options.push({ value: rawCol, label: set.name });
+      }
+    });
+
+    return options;
+  }, [availableColumns, datasetConfig]);
+
+  const [userSelectedCols, setUserSelectedCols] = useState([]);
+
+  const selectedCols = useMemo(() => {
+    if (userSelectedCols.length >= 2) return userSelectedCols;
+    if (allowedOptions.length >= 2) {
+      return [allowedOptions[0].value, allowedOptions[1].value];
     }
-  }, [annotationCols]);
+    return ["", ""];
+  }, [userSelectedCols, allowedOptions]);
 
   const [plotData, setPlotData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,9 +63,7 @@ const CellTypeAnnotation = ({ availableColumns }) => {
     let clean = rawLabel;
     selectedCols.forEach((col) => {
       const prefix = col + "_";
-      if (clean.startsWith(prefix)) {
-        clean = clean.replace(prefix, "");
-      }
+      if (clean.startsWith(prefix)) clean = clean.replace(prefix, "");
     });
     return clean;
   };
@@ -50,17 +71,16 @@ const CellTypeAnnotation = ({ availableColumns }) => {
   const handleColumnChange = (index, value) => {
     const newCols = [...selectedCols];
     newCols[index] = value;
-    setSelectedCols(newCols);
+    setUserSelectedCols(newCols);
   };
 
   const addColumn = () => {
-    setSelectedCols([...selectedCols, annotationCols[0]]);
+    setUserSelectedCols([...selectedCols, allowedOptions[0]?.value || ""]);
   };
 
   const removeColumn = (index) => {
     if (selectedCols.length <= 2) return;
-    const newCols = selectedCols.filter((_, i) => i !== index);
-    setSelectedCols(newCols);
+    setUserSelectedCols(selectedCols.filter((_, i) => i !== index));
   };
 
   const handleGenerateSankey = async () => {
@@ -68,7 +88,6 @@ const CellTypeAnnotation = ({ availableColumns }) => {
       setErrorMsg("Please ensure all dropdowns have a selection.");
       return;
     }
-
     for (let i = 0; i < selectedCols.length - 1; i++) {
       if (selectedCols[i] === selectedCols[i + 1]) {
         setErrorMsg("Adjacent columns cannot be the same.");
@@ -100,52 +119,49 @@ const CellTypeAnnotation = ({ availableColumns }) => {
       for (let i = 0; i < selectedCols.length - 1; i++) {
         const colA = selectedCols[i];
         const colB = selectedCols[i + 1];
-        const fileName = `${colA}_vs_${colB}.json`;
 
-        const response = await fetch(`${API_BASE_URL}/api/sankey?col_a=${colA}&col_b=${colB}`);
-        if (!response.ok) {
+        const response = await fetch(
+          `${API_BASE_URL}/api/sankey?col_a=${colA}&col_b=${colB}`,
+        );
+        if (!response.ok)
           throw new Error(`Data not found for: ${colA} → ${colB}`);
-        }
         const data = await response.json();
 
         data.links.forEach((link) => {
           const sourceName = data.nodes[link.source].name;
           const targetName = data.nodes[link.target].name;
-
           const globalSourceIdx = getOrAddNode(sourceName);
           const globalTargetIdx = getOrAddNode(targetName);
-
           const sourceColor = globalNodes[globalSourceIdx].color;
-          const linkColor = hexToRgba(sourceColor, 0.4);
 
           globalLinks.push({
             source: globalSourceIdx,
             target: globalTargetIdx,
             value: link.value,
-            color: linkColor,
+            color: hexToRgba(sourceColor, 0.4),
           });
         });
       }
 
-      const plotlySankey = {
-        type: "sankey",
-        orientation: "h",
-        node: {
-          pad: 15,
-          thickness: 20,
-          line: { color: themeColors.black, width: 0.5 },
-          label: globalNodes.map((n) => cleanLabel(n.name)),
-          color: globalNodes.map((n) => n.color),
+      setPlotData([
+        {
+          type: "sankey",
+          orientation: "h",
+          node: {
+            pad: 15,
+            thickness: 20,
+            line: { color: themeColors.black, width: 0.5 },
+            label: globalNodes.map((n) => cleanLabel(n.name)),
+            color: globalNodes.map((n) => n.color),
+          },
+          link: {
+            source: globalLinks.map((l) => l.source),
+            target: globalLinks.map((l) => l.target),
+            value: globalLinks.map((l) => l.value),
+            color: globalLinks.map((l) => l.color),
+          },
         },
-        link: {
-          source: globalLinks.map((l) => l.source),
-          target: globalLinks.map((l) => l.target),
-          value: globalLinks.map((l) => l.value),
-          color: globalLinks.map((l) => l.color),
-        },
-      };
-
-      setPlotData([plotlySankey]);
+      ]);
     } catch (err) {
       setErrorMsg(err.message);
     } finally {
@@ -191,9 +207,9 @@ const CellTypeAnnotation = ({ availableColumns }) => {
                   value={col}
                   onChange={(e) => handleColumnChange(index, e.target.value)}
                 >
-                  {annotationCols.map((c) => (
-                    <option key={`opt-${index}-${c}`} value={c}>
-                      {c}
+                  {allowedOptions.map((opt) => (
+                    <option key={`opt-${index}-${opt.value}`} value={opt.value}>
+                      {opt.label}
                     </option>
                   ))}
                 </select>
@@ -228,7 +244,6 @@ const CellTypeAnnotation = ({ availableColumns }) => {
           <h3 className="font-bold text-lg mb-2 text-center text-textMain">
             Multi-Step Annotation Flow
           </h3>
-
           <div className="flex-1 w-full bg-app flex items-center justify-center border border-dashed border-borderMain rounded">
             {errorMsg && (
               <p className="text-danger font-semibold">{errorMsg}</p>
@@ -238,7 +253,6 @@ const CellTypeAnnotation = ({ availableColumns }) => {
                 Select column steps and click Generate
               </p>
             )}
-
             {plotData && (
               <Plot
                 data={plotData}
@@ -255,17 +269,13 @@ const CellTypeAnnotation = ({ availableColumns }) => {
                   if (!e || !e.points || e.points.length === 0) return;
                   const point = e.points[0];
                   const sankey = plotData[0];
+                  const nodeIndex =
+                    "source" in point && "target" in point
+                      ? sankey.link.source[point.pointNumber]
+                      : point.pointNumber;
 
-                  let nodeIndex;
-                  if ("source" in point && "target" in point) {
-                    const linkIndex = point.pointNumber;
-                    nodeIndex = sankey.link.source[linkIndex];
-                  } else {
-                    nodeIndex = point.pointNumber;
-                  }
-
-                  let nodeValueOut = 0;
-                  let nodeValueIn = 0;
+                  let nodeValueOut = 0,
+                    nodeValueIn = 0;
                   for (let i = 0; i < sankey.link.source.length; i++) {
                     if (sankey.link.source[i] === nodeIndex)
                       nodeValueOut += sankey.link.value[i];
@@ -273,9 +283,8 @@ const CellTypeAnnotation = ({ availableColumns }) => {
                       nodeValueIn += sankey.link.value[i];
                   }
                   const totalCells = Math.max(nodeValueOut, nodeValueIn);
-
-                  const outgoing = [];
-                  const incoming = [];
+                  const outgoing = [],
+                    incoming = [];
 
                   for (let i = 0; i < sankey.link.source.length; i++) {
                     if (sankey.link.source[i] === nodeIndex) {
@@ -302,7 +311,6 @@ const CellTypeAnnotation = ({ availableColumns }) => {
 
                   outgoing.sort((a, b) => b.value - a.value);
                   incoming.sort((a, b) => b.value - a.value);
-
                   setSelectedInsight({
                     type: "node",
                     label: sankey.node.label[nodeIndex],
@@ -320,7 +328,6 @@ const CellTypeAnnotation = ({ availableColumns }) => {
           <h3 className="font-bold text-lg mb-2 text-textMain border-b border-borderMain pb-2">
             Insights
           </h3>
-
           {!selectedInsight ? (
             <p className="text-sm text-textMuted mt-2">
               Hover over any cluster (box) or connection line (flow) in the
@@ -399,6 +406,4 @@ const CellTypeAnnotation = ({ availableColumns }) => {
       </div>
     </div>
   );
-};
-
-export default CellTypeAnnotation;
+}

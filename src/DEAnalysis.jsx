@@ -1,8 +1,13 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
-import { largeColorPalette, themeColors, DATA_DIR, API_BASE_URL } from "./config";
+import {
+  largeColorPalette,
+  themeColors,
+  DATA_DIR,
+  API_BASE_URL,
+} from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
@@ -92,16 +97,14 @@ export default function DEAnalysis({ customColors = {} }) {
   const [clusterLabels, setClusterLabels] = useState(null);
   const [availableGenes, setAvailableGenes] = useState([]);
 
-  const [gene1, setGene1] = useState(null);
+  const [customGene1, setCustomGene1] = useState(null);
   const [expr1, setExpr1] = useState(null);
-  const [chunkIndex, setChunkIndex] = useState({});
-
 
   useEffect(() => {
     async function initData() {
-      const meta = await fetch(`${API_BASE_URL}/${DATA_DIR}/de_analysis/de_metadata.json`).then((r) =>
-        r.json(),
-      );
+      const meta = await fetch(
+        `${API_BASE_URL}/${DATA_DIR}/de_analysis/de_metadata.json`,
+      ).then((r) => r.json());
       const annos = Object.keys(meta);
       setAnnotations(annos);
       if (annos.length > 0) setSelectedAnnotation(annos[0]);
@@ -122,37 +125,52 @@ export default function DEAnalysis({ customColors = {} }) {
         `${API_BASE_URL}/${DATA_DIR}/de_analysis/top_DEgenes_${selectedAnnotation}.csv`,
       );
       setTopGenesTable(tableCsv);
-      if (tableCsv.length > 0) setSelectedCluster(tableCsv[0]["Cluster Name"]);
+      if (tableCsv.length > 0) {
+        setSelectedCluster(tableCsv[0]["Cluster Name"]);
+        setCustomGene1(null);
+      }
     }
     fetchTable();
   }, [selectedAnnotation]);
 
-  useEffect(() => {
-    if (!selectedAnnotation || !selectedCluster || topGenesTable.length === 0)
-      return;
-
+  const topGene = useMemo(() => {
+    if (
+      !selectedCluster ||
+      topGenesTable.length === 0 ||
+      availableGenes.length === 0
+    )
+      return null;
     const clusterRow = topGenesTable.find(
       (r) => r["Cluster Name"] === selectedCluster,
     );
-    if (clusterRow && clusterRow["Top Genes"] && availableGenes.length > 0) {
-      const topStr = clusterRow["Top Genes"].replace(/[\[\]']/g, "");
+    if (clusterRow && clusterRow["Top Genes"]) {
+      const topStr = clusterRow["Top Genes"].replace(/[[\]']/g, "");
       const topArr = topStr.split(",").map((s) => s.trim());
       if (topArr.length >= 1) {
-        setGene1(
+        return (
           availableGenes.find((g) => g.original === topArr[0]) ||
-            availableGenes[0],
+          availableGenes[0]
         );
       }
     }
+    return availableGenes[0] || null;
+  }, [selectedCluster, topGenesTable, availableGenes]);
+
+  const gene1 = customGene1 || topGene;
+
+  useEffect(() => {
+    if (!selectedAnnotation || !selectedCluster) return;
 
     const safeCluster = selectedCluster
       .replace(/[^\w\s-]/g, "")
       .replace(/\s+/g, "_");
-    fetch(`${API_BASE_URL}/${DATA_DIR}/de_analysis/${selectedAnnotation}_cluster_${safeCluster}.json`)
+    fetch(
+      `${API_BASE_URL}/${DATA_DIR}/de_analysis/${selectedAnnotation}_cluster_${safeCluster}.json`,
+    )
       .then((r) => r.json())
       .then(setVolcanoData)
       .catch(() => setVolcanoData(null));
-  }, [selectedAnnotation, selectedCluster, availableGenes, topGenesTable]);
+  }, [selectedAnnotation, selectedCluster]);
 
   useEffect(() => {
     if (gene1) {
@@ -174,7 +192,9 @@ export default function DEAnalysis({ customColors = {} }) {
     ).sort();
     const map = {};
     uniqueClusters.forEach(
-      (c, i) => (map[c] = customColors[c] || largeColorPalette[i % largeColorPalette.length]),
+      (c, i) =>
+        (map[c] =
+          customColors[c] || largeColorPalette[i % largeColorPalette.length]),
     );
     return map;
   }, [clusterLabels, selectedAnnotation, customColors]);
@@ -242,6 +262,7 @@ export default function DEAnalysis({ customColors = {} }) {
       marker: { size: 3, opacity: 0.5 },
       box: { visible: true },
       meanline: { visible: true },
+      spanmode: "hard",
     }));
   };
 
@@ -272,7 +293,10 @@ export default function DEAnalysis({ customColors = {} }) {
           <select
             className="border border-primary bg-primary-light text-primary-dark p-2 rounded outline-none w-48 max-w-full focus:ring-1 focus:ring-primary"
             value={selectedCluster}
-            onChange={(e) => setSelectedCluster(e.target.value)}
+            onChange={(e) => {
+              setSelectedCluster(e.target.value);
+              setCustomGene1(null); // Reset to cluster top gene
+            }}
           >
             {topGenesTable
               .map((r) => r["Cluster Name"])
@@ -348,7 +372,7 @@ export default function DEAnalysis({ customColors = {} }) {
                 <SearchableSelect
                   options={availableGenes}
                   value={gene1}
-                  onChange={setGene1}
+                  onChange={setCustomGene1}
                   placeholder="Search..."
                 />
               </div>
@@ -430,7 +454,9 @@ export default function DEAnalysis({ customColors = {} }) {
                     return (
                       <tr
                         key={i}
-                        className={`border-b border-borderLight hover:bg-primary-light ${isSelected ? "bg-primary-light bg-opacity-50" : ""}`}
+                        className={`border-b border-borderLight hover:bg-primary-light ${
+                          isSelected ? "bg-primary-light bg-opacity-50" : ""
+                        }`}
                       >
                         <td className="px-4 py-2 font-semibold">
                           <div className="flex items-center gap-2">
@@ -447,7 +473,7 @@ export default function DEAnalysis({ customColors = {} }) {
                           </div>
                         </td>
                         <td className="px-4 py-2 font-mono text-xs text-textMuted">
-                          {row["Top Genes"]?.replace(/[\[\]']/g, "")}
+                          {row["Top Genes"]?.replace(/[[\]']/g, "")}
                         </td>
                       </tr>
                     );

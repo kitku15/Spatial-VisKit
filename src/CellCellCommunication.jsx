@@ -1,11 +1,61 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import * as d3 from "d3";
-import { themeColors, defaultCategoryPalette, DATA_DIR, API_BASE_URL } from "./config";
+import {
+  themeColors,
+  defaultCategoryPalette,
+  DATA_DIR,
+  API_BASE_URL,
+} from "./config";
 import VitessceCCC from "./VitessceCCC";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
-export default function CellCellCommunication({ n, r }) {
+// Pure helper function - no state side effects
+function filterInteractionEdges(
+  rawData,
+  selectedCell,
+  selectedInteractions,
+  selectedMicroenv,
+  microenvsDict,
+  globalCellCounts,
+  minCells,
+) {
+  const filteredData = rawData.filter((d) => {
+    if (
+      selectedCell !== "All" &&
+      d.source !== selectedCell &&
+      d.target !== selectedCell
+    ) {
+      return false;
+    }
+    if (!selectedInteractions.includes(d.interaction)) return false;
+
+    let sCount;
+    let tCount;
+
+    if (selectedMicroenv !== "All") {
+      sCount = microenvsDict[selectedMicroenv]?.[d.source] || 0;
+      tCount = microenvsDict[selectedMicroenv]?.[d.target] || 0;
+    } else {
+      sCount = globalCellCounts[d.source] || 0;
+      tCount = globalCellCounts[d.target] || 0;
+    }
+
+    if (sCount < minCells || tCount < minCells) return false;
+    return true;
+  });
+
+  const edgeMap = new Map();
+  filteredData.forEach((d) => {
+    const key = `${d.source}|${d.target}|${d.interaction}`;
+    if (!edgeMap.has(key)) edgeMap.set(key, { ...d, value: 0 });
+    edgeMap.get(key).value += d.value;
+  });
+
+  return Array.from(edgeMap.values());
+}
+
+export default function CellCellCommunication({ n, r, datasetConfig }) {
   const [rawData, setRawData] = useState([]);
   const [microenvsDict, setMicroenvsDict] = useState({});
   const [globalCellCounts, setGlobalCellCounts] = useState({});
@@ -70,18 +120,32 @@ export default function CellCellCommunication({ n, r }) {
         setAvailableInteractions(interactions);
         setSelectedInteractions(interactions);
 
-        if (microenvs.length > 0) {
-          const randomEnv =
-            microenvs[Math.floor(Math.random() * microenvs.length)];
-          setSelectedMicroenv(randomEnv);
+        let initialEnv = "All";
+        let initialCell = "All";
 
-          const cellsInEnv = Object.keys(microData[randomEnv] || {});
+        if (microenvs.length > 0) {
+          initialEnv = microenvs[Math.floor(Math.random() * microenvs.length)];
+          setSelectedMicroenv(initialEnv);
+
+          const cellsInEnv = Object.keys(microData[initialEnv] || {});
           if (cellsInEnv.length > 0) {
-            const randomCell =
+            initialCell =
               cellsInEnv[Math.floor(Math.random() * cellsInEnv.length)];
-            setSelectedCell(randomCell);
+            setSelectedCell(initialCell);
           }
         }
+
+        // Initialize plot data directly without extra render cycle
+        const initialPlot = filterInteractionEdges(
+          edgesData,
+          initialCell,
+          interactions,
+          initialEnv,
+          microData,
+          gCounts,
+          50,
+        );
+        setPlotData(initialPlot);
       } catch (err) {
         console.error("Could not load CPDB data:", err);
       }
@@ -99,46 +163,27 @@ export default function CellCellCommunication({ n, r }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     if (!rawData.length) return;
-
-    const filteredData = rawData.filter((d) => {
-      if (
-        selectedCell !== "All" &&
-        d.source !== selectedCell &&
-        d.target !== selectedCell
-      )
-        return false;
-      if (!selectedInteractions.includes(d.interaction)) return false;
-
-      let sCount = 0;
-      let tCount = 0;
-
-      if (selectedMicroenv !== "All") {
-        sCount = microenvsDict[selectedMicroenv]?.[d.source] || 0;
-        tCount = microenvsDict[selectedMicroenv]?.[d.target] || 0;
-      } else {
-        sCount = globalCellCounts[d.source] || 0;
-        tCount = globalCellCounts[d.target] || 0;
-      }
-
-      if (sCount < minCells || tCount < minCells) return false;
-      return true;
-    });
-
-    const edgeMap = new Map();
-    filteredData.forEach((d) => {
-      const key = `${d.source}|${d.target}|${d.interaction}`;
-      if (!edgeMap.has(key)) edgeMap.set(key, { ...d, value: 0 });
-      edgeMap.get(key).value += d.value;
-    });
-
-    setPlotData(Array.from(edgeMap.values()));
-  };
-
-  useEffect(() => {
-    if (rawData.length > 0) handleRefresh();
-  }, [rawData]);
+    const filtered = filterInteractionEdges(
+      rawData,
+      selectedCell,
+      selectedInteractions,
+      selectedMicroenv,
+      microenvsDict,
+      globalCellCounts,
+      minCells,
+    );
+    setPlotData(filtered);
+  }, [
+    rawData,
+    selectedCell,
+    selectedInteractions,
+    selectedMicroenv,
+    microenvsDict,
+    globalCellCounts,
+    minCells,
+  ]);
 
   useEffect(() => {
     if (!d3Container.current) return;
@@ -531,6 +576,7 @@ export default function CellCellCommunication({ n, r }) {
               r={r}
               selectedMicroenv={selectedMicroenv}
               cellColorMap={cellColorMap}
+              datasetConfig={datasetConfig}
             />
           </div>
         </div>

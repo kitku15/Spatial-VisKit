@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { DATA_DIR, largeColorPalette, API_BASE_URL } from "./config";
+import { useState, useEffect, useMemo } from "react";
+import { largeColorPalette, API_BASE_URL } from "./config";
 
 // Maximum number of unique categories to render color pickers for.
 // Anything above this is likely continuous data or cell barcodes.
-const MAX_CATEGORIES_LIMIT = 100; 
+const MAX_CATEGORIES_LIMIT = 100;
 
 export default function ColorSettings({ customColors, setCustomColors }) {
   const [obsData, setObsData] = useState(null);
@@ -12,7 +12,7 @@ export default function ColorSettings({ customColors, setCustomColors }) {
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/obs`)
-    // fetch(`/${DATA_DIR}/cell_clusters.json`)
+      // fetch(`/${DATA_DIR}/cell_clusters.json`)
       .then((res) => res.json())
       .then((data) => {
         setObsData(data);
@@ -28,7 +28,7 @@ export default function ColorSettings({ customColors, setCustomColors }) {
     const labels = Array.from(new Set(obsData[selectedCol]))
       .filter((val) => val && val !== "nan" && val !== "None")
       .sort();
-      
+
     return labels;
   }, [obsData, selectedCol]);
 
@@ -87,13 +87,17 @@ export default function ColorSettings({ customColors, setCustomColors }) {
               ⚠️ Too Many Unique Values ({uniqueLabels.length})
             </span>
             <p className="text-textMuted text-center max-w-md">
-              The category <b>"{selectedCol}"</b> contains too many unique values to render as distinct colors. It is likely a continuous variable (like gene expression) or unique identifiers (like cell barcodes).
+              The category <b>"{selectedCol}"</b> contains too many unique
+              values to render as distinct colors. It is likely a continuous
+              variable (like gene expression) or unique identifiers (like cell
+              barcodes).
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {uniqueLabels.map((label, i) => {
-              const defaultColor = largeColorPalette[i % largeColorPalette.length];
+              const defaultColor =
+                largeColorPalette[i % largeColorPalette.length];
               const currentColor = customColors[label] || defaultColor;
 
               return (

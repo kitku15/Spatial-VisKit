@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,7 +6,7 @@ import {
   NavLink,
   Navigate,
 } from "react-router-dom";
-import { ZARR_DIR, PROJECT_TITLE, DATA_DIR, API_BASE_URL} from "./config";
+import { APP_MODE, PROJECT_TITLE, API_BASE_URL } from "./config";
 import VitessceViewer from "./VitessceViewer";
 import CellTypeAnnotation from "./CellTypeAnnotation";
 import CellCellCommunication from "./CellCellCommunication";
@@ -21,9 +21,6 @@ import ConditionsCausal from "./ConditionsCausal";
 import CompositionAnalysis from "./CompositionAnalysis";
 import ColorSettings from "./ColorSettings";
 
-// --- MAIN LAYOUT COMPONENT ---
-// We now pass our state and functions into the layout as props
-// Add availableN and availableR to the incoming props
 const Layout = ({
   children,
   availableN,
@@ -39,10 +36,12 @@ const Layout = ({
   sidebarOpen,
   setSidebarOpen,
 }) => {
-  // Using our new semantic variables
-  const activeClass = "bg-selpanel text-textInverse font-semibold px-4 py-3";
+  const activeClass =
+    "bg-selpanel text-textInverse font-semibold px-4 py-3 whitespace-nowrap";
   const inactiveClass =
-    "bg-panel text-textMuted font-semibold px-4 py-3 border-r border-borderLight hover:bg-primary-light hover:text-primary-dark";
+    "bg-panel text-textMuted font-semibold px-4 py-3 border-r border-borderLight hover:bg-primary-light hover:text-primary-dark whitespace-nowrap";
+
+  const isFullMode = APP_MODE === "full";
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -53,7 +52,6 @@ const Layout = ({
 
   return (
     <div className="flex flex-col h-screen bg-app">
-      {/* Header */}
       <header className="bg-header text-3xl p-3 flex items-center gap-4 text-textInverse font-semibold">
         <button
           onClick={() => setSidebarOpen((prev) => !prev)}
@@ -63,22 +61,14 @@ const Layout = ({
           ☰
         </button>
         <span>{PROJECT_TITLE}</span>
+        {!isFullMode && (
+          <span className="ml-auto text-sm font-bold bg-primary px-3 py-1 rounded">
+            Lite Mode
+          </span>
+        )}
       </header>
 
-      {/* Navigation */}
-      <nav className="flex border-b border-borderMain bg-panel shadow-sm">
-        <NavLink
-          to="/colors"
-          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
-        >
-          Color Settings
-        </NavLink>
-        <NavLink
-          to="/qc"
-          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
-        >
-          Quality Control
-        </NavLink>
+      <nav className="flex border-b border-borderMain bg-panel shadow-sm overflow-x-auto">
         <NavLink
           to="/interactive"
           className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
@@ -98,57 +88,91 @@ const Layout = ({
           Multiplex Overlay
         </NavLink>
         <NavLink
-          to="/stats"
+          to="/colors"
           className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
         >
-          Spatial Stats
+          Color Settings
         </NavLink>
-        <NavLink
-          to="/tf"
-          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
-        >
-          Transcription Factor Analysis
-        </NavLink>
-        <NavLink
-          to="/ccc"
-          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
-        >
-          Cell Cell Communication
-        </NavLink>
-        <NavLink
-          to="/spatial-ccc"
-          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
-        >
-          Spatial CCC (LIANA)
-        </NavLink>
-        <NavLink
-          to="/de-analysis"
-          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
-        >
-          Cell Type DE Analysis
-        </NavLink>
-        <NavLink
-          to="/conditions-de"
-          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
-        >
-          Conditions DE Analysis
-        </NavLink>
-        <NavLink
-          to="/annotation"
-          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
-        >
-          Cell Type Annotation
-        </NavLink>
-        <NavLink
-          to="/conditions-causal"
-          className={({ isActive }) => (isActive ? activeClass : inactiveClass)}
-        >
-          Condition Signaling (Causal)
-        </NavLink>
+
+        {isFullMode && (
+          <>
+            <NavLink
+              to="/qc"
+              className={({ isActive }) =>
+                isActive ? activeClass : inactiveClass
+              }
+            >
+              Quality Control
+            </NavLink>
+            <NavLink
+              to="/stats"
+              className={({ isActive }) =>
+                isActive ? activeClass : inactiveClass
+              }
+            >
+              Spatial Stats
+            </NavLink>
+            <NavLink
+              to="/tf"
+              className={({ isActive }) =>
+                isActive ? activeClass : inactiveClass
+              }
+            >
+              Transcription Factor Analysis
+            </NavLink>
+            <NavLink
+              to="/ccc"
+              className={({ isActive }) =>
+                isActive ? activeClass : inactiveClass
+              }
+            >
+              Cell Cell Communication
+            </NavLink>
+            <NavLink
+              to="/spatial-ccc"
+              className={({ isActive }) =>
+                isActive ? activeClass : inactiveClass
+              }
+            >
+              Spatial CCC (LIANA)
+            </NavLink>
+            <NavLink
+              to="/de-analysis"
+              className={({ isActive }) =>
+                isActive ? activeClass : inactiveClass
+              }
+            >
+              Cell Type DE Analysis
+            </NavLink>
+            <NavLink
+              to="/conditions-de"
+              className={({ isActive }) =>
+                isActive ? activeClass : inactiveClass
+              }
+            >
+              Conditions DE Analysis
+            </NavLink>
+            <NavLink
+              to="/annotation"
+              className={({ isActive }) =>
+                isActive ? activeClass : inactiveClass
+              }
+            >
+              Cell Type Annotation
+            </NavLink>
+            <NavLink
+              to="/conditions-causal"
+              className={({ isActive }) =>
+                isActive ? activeClass : inactiveClass
+              }
+            >
+              Condition Signaling (Causal)
+            </NavLink>
+          </>
+        )}
       </nav>
 
       <main className="flex-1 overflow-auto flex">
-        {/* Sidebar */}
         <aside
           className={`bg-sidebar border-r border-borderMain flex flex-col transition-all duration-200 ${
             sidebarOpen ? "w-64" : "w-0 overflow-hidden"
@@ -214,27 +238,33 @@ const Layout = ({
                   </summary>
                   <div className="ml-4 mt-1 space-y-1 bg-borderLight p-2 rounded border border-borderMain">
                     {availableEmbeddings.length === 0 && (
-                      <span className="text-xs text-textMuted">Scanning...</span>
+                      <span className="text-xs text-textMuted">
+                        Scanning...
+                      </span>
                     )}
                     {availableEmbeddings
                       .filter((val) => {
-                        // FIX: Only show base embeddings (X_umap) OR embeddings matching the selected N
                         const match = val.match(/_n(\d+)/);
                         return !match || match[1] === String(selectedN);
                       })
                       .map((val) => (
-                      <label key={val} className="block text-sm text-textMain cursor-pointer">
-                        <input
-                          type="radio"
-                          name="embedding_val"
-                          value={val}
-                          checked={selectedEmbedding === val}
-                          onChange={(e) => setSelectedEmbedding(e.target.value)}
-                          className="mr-2 accent-primary"
-                        />
-                        {val}
-                      </label>
-                    ))}
+                        <label
+                          key={val}
+                          className="block text-sm text-textMain cursor-pointer"
+                        >
+                          <input
+                            type="radio"
+                            name="embedding_val"
+                            value={val}
+                            checked={selectedEmbedding === val}
+                            onChange={(e) =>
+                              setSelectedEmbedding(e.target.value)
+                            }
+                            className="mr-2 accent-primary"
+                          />
+                          {val}
+                        </label>
+                      ))}
                   </div>
                 </details>
 
@@ -278,119 +308,149 @@ const Layout = ({
 };
 
 export default function App() {
-  // 1. Available options state (Populated dynamically from Zarr)
   const [availableN, setAvailableN] = useState([]);
-  const [availableR, setAvailableR] = useState([]);
-
-  // 2. "Draft" state (Updates instantly when clicking radio buttons)
   const [selectedN, setSelectedN] = useState("");
   const [selectedR, setSelectedR] = useState("");
-
-  const [availableEmbeddings, setAvailableEmbeddings] = useState([]);
   const [selectedEmbedding, setSelectedEmbedding] = useState("");
 
-  // 3. "Applied" state (Only updates when "Refresh plot" is clicked)
   const [appliedN, setAppliedN] = useState("");
   const [appliedR, setAppliedR] = useState("");
   const [appliedEmbedding, setAppliedEmbedding] = useState("");
 
-  // 4. For Cell Type Annotation page
   const [allColumns, setAllColumns] = useState([]);
-
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [datasetConfig, setDatasetConfig] = useState(null);
 
-  // Initialize state from Local Storage (if it exists)
+  const [clusterMap, setClusterMap] = useState({});
+  const [allEmbeddings, setAllEmbeddings] = useState([]);
+
   const [customColors, setCustomColors] = useState(() => {
     const savedColors = localStorage.getItem("app_custom_colors");
     if (savedColors) {
       try {
         return JSON.parse(savedColors);
       } catch (e) {
-        console.warn("Failed to parse colors from local storage", e);
+        console.warn(e);
       }
     }
     return {};
   });
 
-  // Whenever customColors changes, save it to Local Storage
   useEffect(() => {
     localStorage.setItem("app_custom_colors", JSON.stringify(customColors));
   }, [customColors]);
 
-  // 4. Read the Zarr file on load to detect what's available!
+  const availableR = useMemo(() => {
+    if (APP_MODE !== "full" || Object.keys(clusterMap).length === 0) return [];
+    return Array.from(clusterMap[selectedN] || []).sort(
+      (a, b) => Number(a) - Number(b),
+    );
+  }, [selectedN, clusterMap]);
+
+  const availableEmbeddings = useMemo(() => {
+    if (APP_MODE !== "full" || allEmbeddings.length === 0) return allEmbeddings;
+    return allEmbeddings.filter((val) => {
+      const match = val.match(/_n(\d+)/);
+      return !match || match[1] === String(selectedN);
+    });
+  }, [selectedN, allEmbeddings]);
+
   useEffect(() => {
     async function fetchZarrMetadata() {
       try {
-        // 1. Fetch metadata from the blazing fast Python API
         const response = await fetch(`${API_BASE_URL}/api/metadata`);
         const data = await response.json();
 
+        setDatasetConfig(data);
         const columns = data.obs_columns || [];
+        const obsmKeys = data.obsm_keys || [];
         setAllColumns(columns);
 
-        const ns = new Set();
-        const rs = new Set();
+        let nList = [];
+        let eList = [];
+        const cMap = {};
 
-        // FIX: Made the regex generic to catch 'leidenpca_n15_r0.5' or ANY cluster name!
-        columns.forEach((col) => {
-          const match = col.match(/_n(\d+)_r([\d.]+)/); 
-          if (match) {
-            ns.add(match[1]);
-            rs.add(match[2]);
-          }
-        });
+        if (APP_MODE === "full") {
+          columns.forEach((col) => {
+            const match = col.match(/_n(\d+)_r([\d.]+)/);
+            if (match) {
+              const nVal = match[1];
+              const rVal = match[2];
+              if (!cMap[nVal]) cMap[nVal] = new Set();
+              cMap[nVal].add(rVal);
+            }
+          });
+          nList = Object.keys(cMap).sort((a, b) => Number(a) - Number(b));
 
-        const nList = Array.from(ns).sort((a, b) => Number(a) - Number(b));
-        const rList = Array.from(rs).sort((a, b) => Number(a) - Number(b));
+          const actualEmbeddings = obsmKeys.filter(
+            (k) => typeof k === "string" && !k.startsWith("_"),
+          );
+          eList = actualEmbeddings.length > 0 ? actualEmbeddings : ["X_umap"];
+        } else {
+          nList = ["10"];
+          const configEmbeddings =
+            data.available_embeddings && data.available_embeddings.length > 0
+              ? data.available_embeddings
+              : [{ name: "UMAP", path: "obsm/X_umap" }];
+          eList = configEmbeddings.map((e) => e.path.replace("obsm/", ""));
+        }
 
+        setClusterMap(cMap);
+        setAllEmbeddings(eList);
         setAvailableN(nList);
-        setAvailableR(rList);
 
-        // FIX: Added Failsafes! If it finds N/R, it uses them. If not, it unlocks Vitessce anyway!
-        if (nList.length > 0) {
-          setSelectedN(nList[0]);
-          setAppliedN(nList[0]);
-        } else {
-          setSelectedN("N/A");
-          setAppliedN("N/A");
-        }
+        const initialN = nList.length > 0 ? nList[0] : "N/A";
+        setSelectedN(initialN);
+        setAppliedN(initialN);
 
-        if (rList.length > 0) {
-          setSelectedR(rList[0]);
-          setAppliedR(rList[0]);
-        } else {
-          setSelectedR("N/A");
-          setAppliedR("N/A");
-        }
+        const initialRs = Array.from(cMap[initialN] || []).sort(
+          (a, b) => Number(a) - Number(b),
+        );
+        const initialR = initialRs.length > 0 ? String(initialRs[0]) : "N/A";
+        setSelectedR(initialR);
+        setAppliedR(initialR);
 
-        // 2. Scan for embeddings
-        const eList = ["X_umap", "X_pca"];
-        nList.forEach((n) => {
-            eList.push(`X_umap_n${n}_X_pca`);
-            eList.push(`X_umap_n${n}`);
-            eList.push(`X_umap_n${n}_X_scANVI`); 
+        const initialEmbeddings = eList.filter((val) => {
+          const match = val.match(/_n(\d+)/);
+          return !match || match[1] === String(initialN);
         });
-
-        const uniqueElist = Array.from(new Set(eList));
-        setAvailableEmbeddings(uniqueElist);
-        
-        // Ensure appliedEmbedding is never empty
-        setAppliedEmbedding(uniqueElist[0] || "none");
-        setSelectedEmbedding(uniqueElist[0] || "none");
-
+        const initialEmbedding =
+          initialEmbeddings.length > 0
+            ? initialEmbeddings[0]
+            : eList[0] || "none";
+        setSelectedEmbedding(initialEmbedding);
+        setAppliedEmbedding(initialEmbedding);
       } catch (error) {
         console.error("Failed to fetch API metadata.", error);
-        setSelectedN("N/A");
-        setAppliedN("N/A");
-        setSelectedR("N/A");
-        setAppliedR("N/A");
-        setAppliedEmbedding("X_umap");
-        setSelectedEmbedding("X_umap");
       }
     }
-
     fetchZarrMetadata();
   }, []);
+
+  const handleSelectN = (newN) => {
+    setSelectedN(newN);
+
+    const validRs = Array.from(clusterMap[newN] || []).sort(
+      (a, b) => Number(a) - Number(b),
+    );
+    if (
+      validRs.length > 0 &&
+      !validRs.map(String).includes(String(selectedR))
+    ) {
+      setSelectedR(String(validRs[0]));
+    }
+
+    const validEmbeddings = allEmbeddings.filter((val) => {
+      const match = val.match(/_n(\d+)/);
+      return !match || match[1] === String(newN);
+    });
+    if (
+      validEmbeddings.length > 0 &&
+      !validEmbeddings.includes(selectedEmbedding)
+    ) {
+      setSelectedEmbedding(validEmbeddings[0]);
+    }
+  };
 
   const handleRefresh = () => {
     setAppliedN(selectedN);
@@ -398,9 +458,12 @@ export default function App() {
     setAppliedEmbedding(selectedEmbedding);
   };
 
-  // Prevent loading Vitessce until we actually know what N and R to ask for
-  // const isReady = appliedN !== "" && appliedR !== "";
-  const isReady = appliedN !== "" && appliedR !== "" && appliedEmbedding !== "";
+  const isReady =
+    appliedN !== "" &&
+    appliedR !== "" &&
+    appliedEmbedding !== "" &&
+    datasetConfig !== null;
+  const isFullMode = APP_MODE === "full";
 
   return (
     <Router>
@@ -409,7 +472,7 @@ export default function App() {
         availableR={availableR}
         availableEmbeddings={availableEmbeddings}
         selectedN={selectedN}
-        setSelectedN={setSelectedN}
+        setSelectedN={handleSelectN}
         selectedR={selectedR}
         setSelectedR={setSelectedR}
         selectedEmbedding={selectedEmbedding}
@@ -419,72 +482,126 @@ export default function App() {
         setSidebarOpen={setSidebarOpen}
       >
         <Routes>
-          <Route path="/colors" element={<ColorSettings customColors={customColors} setCustomColors={setCustomColors} />} />
-          <Route path="/" element={<Navigate to="/qc" />} />
-          <Route path="/qc" element={<QualityControl />} />
+          <Route
+            path="/"
+            element={<Navigate to={isFullMode ? "/qc" : "/interactive"} />}
+          />
+
           <Route
             path="/interactive"
             element={
               isReady ? (
-                <VitessceViewer n={appliedN} r={appliedR} embedding={appliedEmbedding} customColors={customColors} />
+                <VitessceViewer
+                  n={appliedN}
+                  r={appliedR}
+                  embedding={appliedEmbedding}
+                  customColors={customColors}
+                  datasetConfig={datasetConfig}
+                />
               ) : (
                 <div className="p-6">Loading data from Zarr...</div>
               )
             }
           />
-          <Route path="/composition" element={<CompositionAnalysis customColors={customColors} />} />
+          <Route
+            path="/composition"
+            element={<CompositionAnalysis customColors={customColors} />}
+          />
           <Route path="/multiplex" element={<MultiplexGeneOverlay />} />
           <Route
-            path="/stats"
+            path="/colors"
             element={
-              isReady ? (
-                <SpatialStats n={appliedN} r={appliedR} embedding={appliedEmbedding} customColors={customColors} />
-              ) : (
-                <div className="p-6">Loading data from Zarr...</div>
-              )
+              <ColorSettings
+                customColors={customColors}
+                setCustomColors={setCustomColors}
+              />
             }
           />
-          <Route
-            path="/tf"
-            element={
-              isReady ? (
-                // <TranscriptionFactor n={appliedN} r={appliedR} />
-                <TranscriptionFactor n={appliedN} r={appliedR} embedding={appliedEmbedding} />
-              ) : (
-                <div className="p-6">Loading data from Zarr...</div>
-              )
-            }
-          />
-          <Route
-            path="/ccc"
-            element={
-              isReady ? (
-                <CellCellCommunication n={appliedN} r={appliedR} />
-              ) : (
-                <div className="p-6">Loading data from Zarr...</div>
-              )
-            }
-          />
-          <Route
-            path="/spatial-ccc"
-            element={
-              isReady ? (
-                <SpatialCCC n={appliedN} />
-              ) : (
-                <div className="p-6">Loading data from Zarr...</div>
-              )
-            }
-          />
-          <Route
-            path="/annotation"
-            element={<CellTypeAnnotation availableColumns={allColumns} />}
-          />
-          <Route path="/de-analysis" element={<DEAnalysis customColors={customColors} />} />
-          <Route path="/conditions-de" element={<ConditionsDE />} />
-          <Route
-            path="/conditions-causal"
-            element={<ConditionsCausal />}
-          />
+
+          {isFullMode && (
+            <>
+              <Route path="/qc" element={<QualityControl />} />
+              <Route
+                path="/stats"
+                element={
+                  isReady ? (
+                    <SpatialStats
+                      n={appliedN}
+                      r={appliedR}
+                      customColors={customColors}
+                      datasetConfig={datasetConfig}
+                    />
+                  ) : (
+                    <div className="p-6">Loading data from Zarr...</div>
+                  )
+                }
+              />
+              <Route
+                path="/tf"
+                element={
+                  isReady ? (
+                    <TranscriptionFactor
+                      n={appliedN}
+                      r={appliedR}
+                      embedding={appliedEmbedding}
+                      customColors={customColors}
+                      datasetConfig={datasetConfig}
+                    />
+                  ) : (
+                    <div className="p-6">Loading data from Zarr...</div>
+                  )
+                }
+              />
+              <Route
+                path="/ccc"
+                element={
+                  isReady ? (
+                    <CellCellCommunication
+                      n={appliedN}
+                      r={appliedR}
+                      datasetConfig={datasetConfig}
+                    />
+                  ) : (
+                    <div className="p-6">Loading data from Zarr...</div>
+                  )
+                }
+              />
+              <Route
+                path="/spatial-ccc"
+                element={
+                  isReady ? (
+                    <SpatialCCC
+                      n={appliedN}
+                      r={appliedR}
+                      customColors={customColors}
+                      datasetConfig={datasetConfig}
+                    />
+                  ) : (
+                    <div className="p-6">Loading data from Zarr...</div>
+                  )
+                }
+              />
+              <Route
+                path="/annotation"
+                element={
+                  datasetConfig ? (
+                    <CellTypeAnnotation
+                      availableColumns={allColumns}
+                      datasetConfig={datasetConfig}
+                    />
+                  ) : (
+                    <div className="p-6">Loading metadata...</div>
+                  )
+                }
+              />
+              <Route
+                path="/de-analysis"
+                element={<DEAnalysis customColors={customColors} />}
+              />
+              <Route path="/conditions-de" element={<ConditionsDE />} />
+              <Route path="/conditions-causal" element={<ConditionsCausal />} />
+            </>
+          )}
         </Routes>
       </Layout>
     </Router>

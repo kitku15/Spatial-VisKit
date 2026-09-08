@@ -6,10 +6,11 @@ services:
     environment:
       - MODULE_10_DIR=/data
     volumes:
-      - ./public/10_WebVis:/data
+      # THIS IS THE MAGIC LINE: It reads the folder name from your .env file!
+      - ./public/${ACTIVE_DATASET_FOLDER}:/data
 
   frontend:
-    build: .             # <--- Changed this to build the root directory!
+    build: .
     ports:
       - "5173:5173"
     depends_on:

@@ -6,50 +6,91 @@ import zarr
 import pandas as pd
 import numpy as np
 import os
+import json
 
-# --- Configuration ---
+# --- Environment ---
 MODULE_10_DIR = os.getenv("MODULE_10_DIR", "/data")
-AUX_DATA_PATH = os.path.join(MODULE_10_DIR, "aux_data")
-
-# FIX 1: Explicitly ignore the TF Zarr so we connect to the MAIN Zarr!
-ZARR_PATH = None
-if os.path.exists(MODULE_10_DIR):
-    for f in os.listdir(MODULE_10_DIR):
-        if f.endswith("_web.zarr") and "_tf_" not in f:
-            ZARR_PATH = os.path.join(MODULE_10_DIR, f)
-            break
+CONFIG_PATH = os.path.join(MODULE_10_DIR, "dataset_config.json")
 
 # --- Globals for Zarr Data ---
+ZARR_PATH = None
 ZARR_STORE = None
 OBS_DF = None
 VAR_DF = None
 
-# Smart column detectors
+# --- Configuration Globals ---
 SLIDE_COL = None
 SAMPLE_COL = None
+SPATIAL_KEY = None
+
+VITESSCE_DOT_SIZE = 2
+PRIMARY_ANNOTATION = "Final_Annotation"
+DYNAMIC_ANNOTATIONS = [{"name": "Cell Clusters (Leiden)", "prefix": "leiden"}]
+EXTRA_OBS_SETS = []
+TF_ZARR_FILENAME = ""
+ZARR_FILENAME_ACTUAL = ""
+AVAILABLE_EMBEDDINGS = []
+DYNAMIC_ANNOTATIONS = []
+EXTRA_OBS_SETS = []
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global ZARR_STORE, OBS_DF, VAR_DF, SLIDE_COL, SAMPLE_COL
-    if not ZARR_PATH or not os.path.exists(ZARR_PATH):
-        print(f"WARNING: Zarr path not found in {MODULE_10_DIR}!")
+    global ZARR_STORE, OBS_DF, VAR_DF, ZARR_PATH, ZARR_FILENAME_ACTUAL
+    global SLIDE_COL, SAMPLE_COL, SPATIAL_KEY, TF_ZARR_FILENAME
+    global VITESSCE_DOT_SIZE, PRIMARY_ANNOTATION, DYNAMIC_ANNOTATIONS, EXTRA_OBS_SETS, AVAILABLE_EMBEDDINGS
+    zarr_filename = None
+    
+    # 1. Load Configuration (if provided)
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "r") as f:
+                config = json.load(f)
+                ZARR_FILENAME_ACTUAL = config.get("zarr_filename", "")
+                TF_ZARR_FILENAME = config.get("tf_zarr_filename", "")
+                SLIDE_COL = config.get("slide_col")
+                SAMPLE_COL = config.get("sample_col")
+                SPATIAL_KEY = config.get("spatial_key")
+                VITESSCE_DOT_SIZE = config.get("vitessce_dot_size", 2)
+                PRIMARY_ANNOTATION = config.get("primary_annotation", "Final_Annotation")
+                DYNAMIC_ANNOTATIONS = config.get("dynamic_annotations", [{"name": "Cell Clusters (Leiden)", "prefix": "leiden"}])
+                EXTRA_OBS_SETS = config.get("extra_obs_sets", [])
+                AVAILABLE_EMBEDDINGS = config.get("available_embeddings", [{"name": "UMAP", "path": "obsm/X_umap"}])
+        except Exception as e:
+            print(f"WARNING: Failed to parse dataset_config.json: {e}")
     else:
-        print(f"Connecting to MAIN Zarr store at {ZARR_PATH}...")
+        print("No dataset_config.json found. Falling back to auto-detection...")
+
+    # 2. Find the Zarr File
+    if zarr_filename and os.path.exists(os.path.join(MODULE_10_DIR, zarr_filename)):
+        ZARR_PATH = os.path.join(MODULE_10_DIR, zarr_filename)
+    elif os.path.exists(MODULE_10_DIR):
+        # Auto-detect pipeline output first, fallback to ANY zarr
+        for f in os.listdir(MODULE_10_DIR):
+            if f.endswith("_web.zarr") and "_tf_" not in f:
+                ZARR_PATH = os.path.join(MODULE_10_DIR, f)
+                break
+        if not ZARR_PATH:
+            for f in os.listdir(MODULE_10_DIR):
+                if f.endswith(".zarr"):
+                    ZARR_PATH = os.path.join(MODULE_10_DIR, f)
+                    break
+
+    if not ZARR_PATH or not os.path.exists(ZARR_PATH):
+        print(f"WARNING: No Zarr file found in {MODULE_10_DIR}!")
+    else:
+        print(f"Connecting to Zarr store at {ZARR_PATH}...")
         try:
             ZARR_STORE = zarr.open(ZARR_PATH, mode='r')
             obs_group = ZARR_STORE['obs']
             
             obs_dict = {}
             for col in obs_group.keys():
-                if col.startswith('_'): 
-                    continue
-                
+                if col.startswith('_'): continue
                 try:
                     item = obs_group[col]
                     if isinstance(item, zarr.Array):
                         obs_dict[col] = item[:]
                     elif isinstance(item, zarr.Group):
-                        # FIX 2: Safely parse Categoricals (like your Final_Annotation)
                         if 'codes' in item and 'categories' in item:
                             codes = item['codes'][:]
                             cats = [c.decode('utf-8') if isinstance(c, bytes) else str(c) for c in item['categories'][:]]
@@ -63,13 +104,21 @@ async def lifespan(app: FastAPI):
             index_name = var_group.attrs.get('_index', '_index')
             VAR_DF = pd.DataFrame(index=var_group[index_name][:])
             
-            # --- SMART COLUMN DETECTION ---
-            for c in OBS_DF.columns:
-                if c.lower() in ['slide_id', 'batch', 'slide id']: SLIDE_COL = c
-                if c.lower() in ['sample_id', 'sample', 'sample id']: SAMPLE_COL = c
-                
+            # Auto-detect missing config properties based on common naming conventions
+            if not SLIDE_COL:
+                for c in OBS_DF.columns:
+                    if c.lower() in ['slide_id', 'batch', 'slide id', 'slide']: SLIDE_COL = c
+            if not SAMPLE_COL:
+                for c in OBS_DF.columns:
+                    if c.lower() in ['sample_id', 'sample', 'sample id', 'library_id', 'fov']: SAMPLE_COL = c
+            if not SPATIAL_KEY and 'obsm' in ZARR_STORE:
+                for target in ['global', 'spatial', 'X_spatial', 'X_global']:
+                    if target in ZARR_STORE['obsm']:
+                        SPATIAL_KEY = target
+                        break
+
             print(f"Loaded {len(OBS_DF)} cells and {len(VAR_DF)} genes.")
-            print(f"Detected Slide Col: {SLIDE_COL} | Sample Col: {SAMPLE_COL}")
+            print(f"Active Settings -> Slide Col: {SLIDE_COL} | Sample Col: {SAMPLE_COL} | Spatial Key: {SPATIAL_KEY}")
             
         except Exception as e:
             print(f"FATAL ERROR ON STARTUP: {e}")
@@ -95,23 +144,34 @@ if os.path.exists(MODULE_10_DIR):
 def get_metadata():
     if OBS_DF is None: raise HTTPException(status_code=500, detail="Data not loaded.")
     
-    # Dynamically build the Slide -> Sample hierarchy using the smart columns
     hierarchy = {}
-    if SLIDE_COL and SAMPLE_COL:
+    if SLIDE_COL in OBS_DF.columns and SAMPLE_COL in OBS_DF.columns:
         for slide in OBS_DF[SLIDE_COL].dropna().unique():
             samples = OBS_DF[OBS_DF[SLIDE_COL] == slide][SAMPLE_COL].dropna().unique().tolist()
             hierarchy[str(slide)] = [str(s) for s in samples]
-    elif SLIDE_COL:
+    elif SLIDE_COL in OBS_DF.columns:
         for slide in OBS_DF[SLIDE_COL].dropna().unique():
             hierarchy[str(slide)] = ["All"]
     else:
         hierarchy = {"All": ["All"]}
 
+    obsm_keys = list(ZARR_STORE['obsm'].keys()) if ZARR_STORE is not None and 'obsm' in ZARR_STORE else []
+
+    # SERVE THE DATASET CONFIG TO REACT!
     return {
         "n_cells": len(OBS_DF),
         "n_genes": len(VAR_DF),
         "obs_columns": list(OBS_DF.columns),
-        "hierarchy": hierarchy
+        "obsm_keys": obsm_keys,
+        "hierarchy": hierarchy,
+        "zarr_filename": ZARR_FILENAME_ACTUAL or os.path.basename(ZARR_PATH),
+        "tf_zarr_filename": TF_ZARR_FILENAME,
+        "spatial_key": SPATIAL_KEY,
+        "vitessce_dot_size": VITESSCE_DOT_SIZE,
+        "primary_annotation": PRIMARY_ANNOTATION,
+        "available_embeddings": AVAILABLE_EMBEDDINGS,
+        "dynamic_annotations": DYNAMIC_ANNOTATIONS,
+        "extra_obs_sets": EXTRA_OBS_SETS
     }
 
 @app.get("/api/genes")
@@ -178,15 +238,13 @@ def get_expression(gene_name: str):
 def get_obs():
     if OBS_DF is None: raise HTTPException(status_code=500, detail="Data not loaded.")
     
-    # SMART FILTER: Get all columns that are categories or strings, with < 100 unique values
-    # Ignore boring columns like cell_ID, fov, etc.
     ignore_cols = ['cell_id', 'cell_id_string', 'cellsegmentationsetid', 'assay_type', 'width', 'centroid_x', 'centroid_y']
     cat_cols = []
     
     for c in OBS_DF.columns:
         if c.lower() in ignore_cols: continue
         if OBS_DF[c].dtype == 'category' or OBS_DF[c].dtype == 'object':
-            if OBS_DF[c].nunique() < 100:  # Ensures we don't send raw barcodes
+            if OBS_DF[c].nunique() < 100:  
                 cat_cols.append(c)
 
     return {c: OBS_DF[c].fillna("Unknown").astype(str).tolist() for c in cat_cols}
@@ -194,14 +252,20 @@ def get_obs():
 @app.get("/api/locations")
 def get_locations():
     if ZARR_STORE is None: raise HTTPException(status_code=500, detail="Data not loaded.")
-    spatial_key = "global" if "global" in ZARR_STORE['obsm'] else "spatial"
-    coords = ZARR_STORE['obsm'][spatial_key][:]
+    if not SPATIAL_KEY: raise HTTPException(status_code=500, detail="No spatial coordinates found in obsm.")
+    if SPATIAL_KEY not in ZARR_STORE['obsm']: raise HTTPException(status_code=500, detail=f"Key {SPATIAL_KEY} not found in obsm.")
+    
+    coords = ZARR_STORE['obsm'][SPATIAL_KEY][:]
+    
+    slides = OBS_DF[SLIDE_COL].tolist() if SLIDE_COL in OBS_DF.columns else ["All"] * len(OBS_DF)
+    samples = OBS_DF[SAMPLE_COL].tolist() if SAMPLE_COL in OBS_DF.columns else ["All"] * len(OBS_DF)
+
     return {
         "id": OBS_DF.index.tolist(),
         "x": np.round(coords[:, 0], 2).tolist(),
         "y": np.round(coords[:, 1], 2).tolist(),
-        "slide": OBS_DF[SLIDE_COL].tolist() if SLIDE_COL else ["All"] * len(OBS_DF),
-        "sample": OBS_DF[SAMPLE_COL].tolist() if SAMPLE_COL else ["All"] * len(OBS_DF),
+        "slide": slides,
+        "sample": samples,
     }
 
 @app.get("/api/composition")
@@ -223,12 +287,12 @@ def get_composition():
 
     composition["All_All"] = get_counts(OBS_DF)
 
-    if SLIDE_COL:
+    if SLIDE_COL and SLIDE_COL in OBS_DF.columns:
         for slide in OBS_DF[SLIDE_COL].dropna().unique():
             slide_mask = OBS_DF[SLIDE_COL] == slide
             composition[f"{slide}_All"] = get_counts(OBS_DF[slide_mask])
 
-            if SAMPLE_COL:
+            if SAMPLE_COL and SAMPLE_COL in OBS_DF.columns:
                 samples = OBS_DF[slide_mask][SAMPLE_COL].dropna().unique()
                 for sample in samples:
                     composition[f"{slide}_{sample}"] = get_counts(OBS_DF[(OBS_DF[SLIDE_COL]==slide) & (OBS_DF[SAMPLE_COL]==sample)])

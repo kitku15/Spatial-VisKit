@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import VitessceTF from "./VitessceTF";
-import { API_BASE_URL, DATA_DIR, themeColors, DYNAMIC_ANNOTATIONS, EXTRA_OBS_SETS } from "./config";
+import { API_BASE_URL, DATA_DIR, themeColors } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
@@ -10,16 +10,26 @@ const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
 
-export default function TranscriptionFactor({ n, r, embedding, customColors={} }) {
+export default function TranscriptionFactor({
+  n,
+  r,
+  embedding,
+  customColors = {},
+  datasetConfig,
+}) {
+  const dynamicAnnotations = datasetConfig?.dynamic_annotations || [];
+  const extraObsSets = datasetConfig?.extra_obs_sets || [];
+
   const [viewMode, setViewMode] = useState("UMAP");
-  const [activeCategory, setActiveCategory] = useState(DYNAMIC_ANNOTATIONS[0].name);
+  const [activeCategory, setActiveCategory] = useState(
+    dynamicAnnotations[0]?.name || "Cell Clusters (Leiden)",
+  );
 
   const [selectedSlide, setSelectedSlide] = useState("All");
   const [selectedSample, setSelectedSample] = useState("All");
 
   const [hierarchy, setHierarchy] = useState({});
   const [availableSlides, setAvailableSlides] = useState(["All"]);
-  const [availableSamples, setAvailableSamples] = useState(["All"]);
 
   const [heatmapData, setHeatmapData] = useState(null);
   const [selectedCellTypes, setSelectedCellTypes] = useState([]);
@@ -33,7 +43,9 @@ export default function TranscriptionFactor({ n, r, embedding, customColors={} }
         const data = await res.json();
         setHierarchy(data.hierarchy);
         const slideKeys = Object.keys(data.hierarchy);
-        setAvailableSlides(slideKeys.includes("All") ? slideKeys : ["All", ...slideKeys]);
+        setAvailableSlides(
+          slideKeys.includes("All") ? slideKeys : ["All", ...slideKeys],
+        );
       } catch (err) {
         console.warn("Could not load spatial metadata", err);
       }
@@ -41,13 +53,12 @@ export default function TranscriptionFactor({ n, r, embedding, customColors={} }
     fetchMetadata();
   }, []);
 
-  useEffect(() => {
-    if (Object.keys(hierarchy).length === 0) return;
+  const availableSamples = useMemo(() => {
+    if (Object.keys(hierarchy).length === 0) return ["All"];
     if (selectedSlide === "All") {
-      setAvailableSamples(["All", ...Object.values(hierarchy).flat()]);
-    } else {
-      setAvailableSamples(["All", ...(hierarchy[selectedSlide] || [])]);
+      return ["All", ...Array.from(new Set(Object.values(hierarchy).flat()))];
     }
+    return ["All", ...(hierarchy[selectedSlide] || [])];
   }, [selectedSlide, hierarchy]);
 
   const handleSlideChange = (e) => {
@@ -58,7 +69,9 @@ export default function TranscriptionFactor({ n, r, embedding, customColors={} }
   useEffect(() => {
     async function fetchHeatmap() {
       try {
-        const res = await fetch(`${API_BASE_URL}/${DATA_DIR}/tf_heatmap_data.json`);
+        const res = await fetch(
+          `${API_BASE_URL}/${DATA_DIR}/tf_heatmap_data.json`,
+        );
         if (!res.ok) return;
         const data = await res.json();
         setHeatmapData(data);
@@ -71,28 +84,28 @@ export default function TranscriptionFactor({ n, r, embedding, customColors={} }
     fetchHeatmap();
   }, []);
 
-  const filteredHeatmap = React.useMemo(() => {
+  const filteredHeatmap = useMemo(() => {
     if (!heatmapData) return null;
     const indicesToKeep = heatmapData.y
       .map((ct, idx) => (selectedCellTypes.includes(ct) ? idx : -1))
       .filter((idx) => idx !== -1);
-    return [{
-      type: "heatmap",
-      x: heatmapData.x,
-      y: indicesToKeep.map((i) => heatmapData.y[i]),
-      z: indicesToKeep.map((i) => heatmapData.z[i]),
-      colorscale: "RdBu",
-      reversescale: false,
-      colorbar: { title: "Z-Scaled Scores" },
-    }];
+    return [
+      {
+        type: "heatmap",
+        x: heatmapData.x,
+        y: indicesToKeep.map((i) => heatmapData.y[i]),
+        z: indicesToKeep.map((i) => heatmapData.z[i]),
+        colorscale: "RdBu",
+        reversescale: false,
+        colorbar: { title: "Z-Scaled Scores" },
+      },
+    ];
   }, [heatmapData, selectedCellTypes]);
 
   const toggleCellType = (ct) => {
-    if (selectedCellTypes.includes(ct)) {
+    if (selectedCellTypes.includes(ct))
       setSelectedCellTypes((prev) => prev.filter((item) => item !== ct));
-    } else {
-      setSelectedCellTypes((prev) => [...prev, ct]);
-    }
+    else setSelectedCellTypes((prev) => [...prev, ct]);
   };
 
   return (
@@ -100,13 +113,13 @@ export default function TranscriptionFactor({ n, r, embedding, customColors={} }
       <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap items-center gap-6">
         <div className="flex bg-borderLight rounded p-1">
           <button
-            className={`px-4 py-1 rounded text-sm font-semibold transition ${viewMode === "UMAP" ? "bg-panel shadow text-primary" : "text-textMuted hover:text-textMain"}`}
+            className={`px-4 py-1 rounded text-sm font-semibold transition cursor-pointer ${viewMode === "UMAP" ? "bg-panel shadow text-primary" : "text-textMuted hover:text-textMain"}`}
             onClick={() => setViewMode("UMAP")}
           >
             UMAP
           </button>
           <button
-            className={`px-4 py-1 rounded text-sm font-semibold transition ${viewMode === "Spatial" ? "bg-panel shadow text-primary" : "text-textMuted hover:text-textMain"}`}
+            className={`px-4 py-1 rounded text-sm font-semibold transition cursor-pointer ${viewMode === "Spatial" ? "bg-panel shadow text-primary" : "text-textMuted hover:text-textMain"}`}
             onClick={() => setViewMode("Spatial")}
           >
             Spatial
@@ -114,30 +127,56 @@ export default function TranscriptionFactor({ n, r, embedding, customColors={} }
         </div>
 
         {viewMode === "Spatial" && (
-            <div className="flex gap-4 border-l border-borderMain pl-4">
-              <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
-                Slide:
-                <select className="border border-borderMain rounded px-2 py-1 bg-panel font-normal outline-none focus:border-primary" value={selectedSlide} onChange={handleSlideChange}>
-                  {availableSlides.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </label>
-              <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
-                Sample:
-                <select className="border border-borderMain rounded px-2 py-1 bg-panel font-normal disabled:opacity-50 outline-none focus:border-primary" value={selectedSample} onChange={(e) => setSelectedSample(e.target.value)} disabled={availableSamples.length <= 1}>
-                  {availableSamples.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </label>
-            </div>
+          <div className="flex gap-4 border-l border-borderMain pl-4">
+            <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
+              Slide:
+              <select
+                className="border border-borderMain rounded px-2 py-1 bg-panel font-normal outline-none focus:border-primary"
+                value={selectedSlide}
+                onChange={handleSlideChange}
+              >
+                {availableSlides.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
+              Sample:
+              <select
+                className="border border-borderMain rounded px-2 py-1 bg-panel font-normal disabled:opacity-50 outline-none focus:border-primary"
+                value={selectedSample}
+                onChange={(e) => setSelectedSample(e.target.value)}
+                disabled={availableSamples.length <= 1}
+              >
+                {availableSamples.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         )}
 
         <label className="text-sm font-semibold flex items-center gap-2 border-l border-borderMain pl-6 text-textMain">
           Color By:
           <select
             className="border border-primary rounded px-2 py-1 bg-primary-light text-primary-dark font-bold outline-none cursor-pointer focus:ring-1 focus:ring-primary"
-            value={activeCategory} onChange={(e) => setActiveCategory(e.target.value)}
+            value={activeCategory}
+            onChange={(e) => setActiveCategory(e.target.value)}
           >
-            {DYNAMIC_ANNOTATIONS.map((ann) => <option key={ann.name} value={ann.name}>{ann.name}</option>)}
-            {EXTRA_OBS_SETS.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
+            {dynamicAnnotations.map((ann) => (
+              <option key={ann.name} value={ann.name}>
+                {ann.name}
+              </option>
+            ))}
+            {extraObsSets.map((s) => (
+              <option key={s.name} value={s.name}>
+                {s.name}
+              </option>
+            ))}
           </select>
         </label>
 
@@ -149,51 +188,68 @@ export default function TranscriptionFactor({ n, r, embedding, customColors={} }
       <div className="flex gap-6 flex-1 min-h-0">
         <div className="flex-1 bg-panel border border-borderLight shadow-sm rounded flex flex-col overflow-hidden relative">
           <div className="bg-app border-b border-borderLight px-4 py-2 flex justify-between items-center z-10">
-            <h3 className="font-bold text-sm text-textMain">TF Spatial Explorer</h3>
-            <span className="text-xs text-textMuted">Select a TF from the right list to color cells</span>
+            <h3 className="font-bold text-sm text-textMain">
+              TF Spatial Explorer
+            </h3>
+            <span className="text-xs text-textMuted">
+              Select a TF from the right list to color cells
+            </span>
           </div>
           <div className="flex-1 relative">
             <VitessceTF
               viewMode={viewMode}
               selectedSlide={selectedSlide}
               selectedSample={selectedSample}
-              n={n} r={r}
+              n={n}
+              r={r}
               embedding={embedding}
               activeCategory={activeCategory}
               customColors={customColors}
+              datasetConfig={datasetConfig}
             />
           </div>
         </div>
 
         <div className="w-[45%] bg-panel border border-borderLight shadow-sm rounded flex flex-col overflow-hidden">
           <div className="bg-app border-b border-borderLight px-4 py-2">
-            <h3 className="font-bold text-sm text-textMain">TF Enrichment per Cell Type</h3>
+            <h3 className="font-bold text-sm text-textMain">
+              TF Enrichment per Cell Type
+            </h3>
           </div>
-
           <div className="p-2 border-b border-borderLight flex gap-2 overflow-x-auto">
             {allCellTypes.map((ct) => (
               <button
-                key={ct} onClick={() => toggleCellType(ct)}
-                className={`flex-shrink-0 text-xs px-2 py-1 rounded border transition ${selectedCellTypes.includes(ct) ? "bg-primary-light border-primary text-primary-dark" : "bg-app border-borderLight text-textMuted hover:bg-borderLight"}`}
+                key={ct}
+                onClick={() => toggleCellType(ct)}
+                className={`flex-shrink-0 text-xs px-2 py-1 rounded border transition cursor-pointer ${selectedCellTypes.includes(ct) ? "bg-primary-light border-primary text-primary-dark" : "bg-app border-borderLight text-textMuted hover:bg-borderLight"}`}
               >
                 {ct}
               </button>
             ))}
           </div>
-
           <div className="flex-1 p-2 relative flex items-center justify-center">
             {!heatmapData ? (
-              <span className="text-textMuted text-sm">Loading Heatmap Data...</span>
+              <span className="text-textMuted text-sm">
+                Loading Heatmap Data...
+              </span>
             ) : selectedCellTypes.length === 0 ? (
-              <span className="text-textMuted text-sm">Select at least one cell type above.</span>
+              <span className="text-textMuted text-sm">
+                Select at least one cell type above.
+              </span>
             ) : (
               <Plot
                 data={filteredHeatmap}
                 layout={{
-                  autosize: true, margin: { l: 180, r: 20, t: 20, b: 100 }, xaxis: { tickangle: 45 }, yaxis: { automargin: true, autorange: "reversed" },
-                  paper_bgcolor: themeColors.paper, plot_bgcolor: themeColors.paper, font: { color: themeColors.label },
+                  autosize: true,
+                  margin: { l: 180, r: 20, t: 20, b: 100 },
+                  xaxis: { tickangle: 45 },
+                  yaxis: { automargin: true, autorange: "reversed" },
+                  paper_bgcolor: themeColors.paper,
+                  plot_bgcolor: themeColors.paper,
+                  font: { color: themeColors.label },
                 }}
-                useResizeHandler={true} style={{ width: "100%", height: "100%" }}
+                useResizeHandler={true}
+                style={{ width: "100%", height: "100%" }}
               />
             )}
           </div>

@@ -91,7 +91,7 @@ export const tabInfo = {
       "Welcome to the Spatial CCC tab.\n\n" +
       "• Interaction Mapping: Select a Ligand-Receptor pair (LR_) or Communication Signature (CCC_) from the dropdown to visualize its exact spatial footprint.\n" +
       "• Intensity Threshold: Adjust the 'Min Color Threshold' slider to filter out low-scoring background cells and highlight strong interactions.\n" +
-      "• Single-Cell Resolution: Unlike macro-level cluster networks, these scores represent cell-cell communication happening at the micro-level across physical space."
+      "• Single-Cell Resolution: Unlike macro-level cluster networks, these scores represent cell-cell communication happening at the micro-level across physical space.",
   },
   causal: {
     title: "Condition Signaling (Causal) Guide",
@@ -100,6 +100,6 @@ export const tabInfo = {
       "• This module maps how external signals (Ligand-Receptor) trigger intracellular protein cascades that regulate gene expression (Transcription Factors) under specific conditions (e.g., Disease vs Healthy).\n" +
       "• Condition-Altered Signals (Top-Left): Shows Ligand-Receptor pairs that are significantly up-regulated (Red) or down-regulated (Blue) between your conditions.\n" +
       "• Altered TF Activity (Bottom-Left): Shows which Transcription Factors are statistically shifted in the Receiver Cell.\n" +
-      "• Causal Network (Right): An interactive force-directed graph mapping the known biological pathways linking the active Receptors (Green) through intermediate Kinases (Grey) to the Transcription Factors (Purple). Solid lines = Activation, Dashed lines = Inhibition."
+      "• Causal Network (Right): An interactive force-directed graph mapping the known biological pathways linking the active Receptors (Green) through intermediate Kinases (Grey) to the Transcription Factors (Purple). Solid lines = Activation, Dashed lines = Inhibition.",
   },
 };

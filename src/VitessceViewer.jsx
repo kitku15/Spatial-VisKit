@@ -1,22 +1,18 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Vitessce } from "vitessce";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import {
   API_BASE_URL,
-  ZARR_DIR,
-  EXTRA_OBS_SETS,
-  SPATIAL_KEY,
-  VITESSCE_DOT_SIZE,
+  DATA_DIR,
   largeColorPalette,
   themeColors,
-  DATA_DIR,
-  DYNAMIC_ANNOTATIONS,
 } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
-const createPlotlyComponent = typeof factory === "function" ? factory : factory.default;
+const createPlotlyComponent =
+  typeof factory === "function" ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
 
 const hexToRgb = (hex) => {
@@ -26,26 +22,65 @@ const hexToRgb = (hex) => {
   return [r, g, b];
 };
 
-export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
+export default function VitessceViewer({
+  n,
+  r,
+  embedding,
+  customColors = {},
+  datasetConfig,
+}) {
+  // Memoize dataset config values to satisfy exhaustive dependencies
+  const dynamicAnnotations = useMemo(
+    () =>
+      datasetConfig?.dynamic_annotations || [
+        { name: "Cell Clusters (Leiden)", prefix: "leiden" },
+      ],
+    [datasetConfig],
+  );
+  const extraObsSets = useMemo(
+    () => datasetConfig?.extra_obs_sets || [],
+    [datasetConfig],
+  );
+  const spatialKey = datasetConfig?.spatial_key || "global";
+  const dotSize = datasetConfig?.vitessce_dot_size || 2;
+  const zarrDir = `data/${datasetConfig?.zarr_filename}`;
+
   const [selectedSlide, setSelectedSlide] = useState("");
   const [selectedSample, setSelectedSample] = useState("");
-  const [activeCategory, setActiveCategory] = useState(DYNAMIC_ANNOTATIONS[0].name);
+  const [activeCategory, setActiveCategory] = useState(
+    dynamicAnnotations[0]?.name || "Cell Clusters (Leiden)",
+  );
 
   const [appliedFilters, setAppliedFilters] = useState({
     slide: "",
     sample: "",
-    category: DYNAMIC_ANNOTATIONS[0].name,
+    category: dynamicAnnotations[0]?.name || "Cell Clusters (Leiden)",
   });
 
   const [hierarchy, setHierarchy] = useState({});
   const [availableSlides, setAvailableSlides] = useState(["All"]);
-  const [availableSamples, setAvailableSamples] = useState(["All"]);
 
   const [compositionData, setCompositionData] = useState(null);
   const [zarrColumns, setZarrColumns] = useState(null);
-  const [obsData, setObsData] = useState(null);
   const [hoveredSlice, setHoveredSlice] = useState(null);
   const [clickedSlice, setClickedSlice] = useState(null);
+
+  // Derive available samples based on selectedSlide and hierarchy
+  const availableSamples = useMemo(() => {
+    if (Object.keys(hierarchy).length === 0) return ["All"];
+    if (selectedSlide === "All") {
+      return Array.from(new Set(["All", ...Object.values(hierarchy).flat()]));
+    }
+    return Array.from(new Set(["All", ...(hierarchy[selectedSlide] || [])]));
+  }, [selectedSlide, hierarchy]);
+
+  // Adjust clicked slice during render if n or r changes (no effect required)
+  const [prevFilterKey, setPrevFilterKey] = useState(`${n}-${r}`);
+  const currentFilterKey = `${n}-${r}`;
+  if (currentFilterKey !== prevFilterKey) {
+    setPrevFilterKey(currentFilterKey);
+    setClickedSlice(null);
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -54,72 +89,87 @@ export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
         if (res.ok) {
           const data = await res.json();
           setHierarchy(data.hierarchy);
-          setZarrColumns(data.obs_columns); 
-          
+          setZarrColumns(data.obs_columns);
+
           const slides = Object.keys(data.hierarchy);
-          const slideKeys = Object.keys(data.hierarchy);
-          setAvailableSlides(slideKeys.includes("All") ? slideKeys : ["All", ...slideKeys]);
+          setAvailableSlides(
+            slides.includes("All") ? slides : ["All", ...slides],
+          );
 
           if (slides.length > 0) {
-            const randomSlide = slides[Math.floor(Math.random() * slides.length)];
+            const randomSlide =
+              slides[Math.floor(Math.random() * slides.length)];
             const samplesInSlide = data.hierarchy[randomSlide] || [];
-            const randomSample = samplesInSlide.length > 0 ? samplesInSlide[Math.floor(Math.random() * samplesInSlide.length)] : "All";
+            const randomSample =
+              samplesInSlide.length > 0
+                ? samplesInSlide[
+                    Math.floor(Math.random() * samplesInSlide.length)
+                  ]
+                : "All";
 
             setSelectedSlide(randomSlide);
-            setAvailableSamples(["All", ...samplesInSlide]);
             setSelectedSample(randomSample);
 
-            setAppliedFilters({ slide: randomSlide, sample: randomSample, category: DYNAMIC_ANNOTATIONS[0].name });
+            const initialCategory =
+              dynamicAnnotations[0]?.name || "Cell Clusters (Leiden)";
+            setAppliedFilters({
+              slide: randomSlide,
+              sample: randomSample,
+              category: initialCategory,
+            });
           }
         }
         const compRes = await fetch(`${API_BASE_URL}/api/composition`);
         if (compRes.ok) setCompositionData(await compRes.json());
-        
-        const obsRes = await fetch(`${API_BASE_URL}/api/obs`);
-        if (obsRes.ok) setObsData(await obsRes.json());
       } catch (err) {
         console.warn("Could not load spatial metadata", err);
       }
     }
     fetchData();
-  }, []);
-
-  useEffect(() => {
-    if (Object.keys(hierarchy).length === 0) return;
-    if (selectedSlide === "All") {
-      setAvailableSamples(Array.from(new Set(["All", ...Object.values(hierarchy).flat()])));
-    } else {
-      setAvailableSamples(Array.from(new Set(["All", ...(hierarchy[selectedSlide] || [])])));
-    }
-  }, [selectedSlide, hierarchy]);
+  }, [dynamicAnnotations]);
 
   const handleSlideChange = (e) => {
     setSelectedSlide(e.target.value);
     setSelectedSample("All");
   };
 
-  useEffect(() => { setClickedSlice(null); }, [appliedFilters, n, r]);
+  const handleApplyFilters = () => {
+    setAppliedFilters({
+      slide: selectedSlide,
+      sample: selectedSample,
+      category: activeCategory,
+    });
+    setClickedSlice(null);
+  };
 
   const internalColName = useMemo(() => {
-    const dynamicAnn = DYNAMIC_ANNOTATIONS.find((a) => a.name === appliedFilters.category);
+    const dynamicAnn = dynamicAnnotations.find(
+      (a) => a.name === appliedFilters.category,
+    );
     if (dynamicAnn) return `${dynamicAnn.prefix}_n${n}_r${r}`;
-    const extra = EXTRA_OBS_SETS.find((e) => e.name === appliedFilters.category);
+    const extra = extraObsSets.find((e) => e.name === appliedFilters.category);
     return extra ? extra.path.replace("obs/", "") : "";
-  }, [appliedFilters.category, n, r]);
+  }, [appliedFilters.category, n, r, dynamicAnnotations, extraObsSets]);
 
   const currentDataCounts = useMemo(() => {
     if (!compositionData) return null;
     const dataKey = `${appliedFilters.slide}_${appliedFilters.sample}`;
     const targetData = compositionData[dataKey] || compositionData["All_All"];
-    return targetData[internalColName] || null;
-  }, [compositionData, appliedFilters.slide, appliedFilters.sample, internalColName]);
+    return targetData ? targetData[internalColName] || null : null;
+  }, [
+    compositionData,
+    appliedFilters.slide,
+    appliedFilters.sample,
+    internalColName,
+  ]);
 
   const colorMap = useMemo(() => {
     if (!currentDataCounts) return {};
     const labels = Object.keys(currentDataCounts).sort();
     const map = {};
     labels.forEach((label, i) => {
-      map[label] = customColors[label] || largeColorPalette[i % largeColorPalette.length];
+      map[label] =
+        customColors[label] || largeColorPalette[i % largeColorPalette.length];
     });
     return map;
   }, [currentDataCounts, customColors]);
@@ -130,33 +180,55 @@ export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
     const values = Object.values(currentDataCounts);
 
     const colors = labels.map((label) => {
-      if (hoveredSlice) return label === hoveredSlice ? colorMap[label] : themeColors.background;
-      if (clickedSlice) return label === clickedSlice ? colorMap[label] : themeColors.background;
+      if (hoveredSlice)
+        return label === hoveredSlice
+          ? colorMap[label]
+          : themeColors.background;
+      if (clickedSlice)
+        return label === clickedSlice
+          ? colorMap[label]
+          : themeColors.background;
       return colorMap[label];
     });
 
-    return [{
-      values, labels, type: "pie", textinfo: "label+percent", textposition: "inside",
-      hoverinfo: "label+value+percent", marker: { colors }, sort: false, hole: 0.3,
-    }];
+    return [
+      {
+        values,
+        labels,
+        type: "pie",
+        textinfo: "label+percent",
+        textposition: "inside",
+        hoverinfo: "label+value+percent",
+        marker: { colors },
+        sort: false,
+        hole: 0.3,
+      },
+    ];
   }, [currentDataCounts, colorMap, hoveredSlice, clickedSlice]);
 
   const config = useMemo(() => {
-    let spatialEmbeddingKey = `obsm/${SPATIAL_KEY}`;
-    let segmentationsFile = appliedFilters.sample !== "All"
-      ? `${DATA_DIR}/segmentations/segmentations_${appliedFilters.sample}.json`
-      : appliedFilters.slide !== "All" ? `${DATA_DIR}/segmentations/segmentations_${appliedFilters.slide}.json` : `${DATA_DIR}/segmentations/segmentations.json`;
+    const spatialEmbeddingKey = `obsm/${spatialKey}`;
+    const segmentationsFile =
+      appliedFilters.sample !== "All"
+        ? `${DATA_DIR}/segmentations/segmentations_${appliedFilters.sample}.json`
+        : appliedFilters.slide !== "All"
+          ? `${DATA_DIR}/segmentations/segmentations_Slide_${appliedFilters.slide}.json`
+          : `${DATA_DIR}/segmentations/segmentations.json`;
 
     const obsSetColor = Object.keys(colorMap).map((label) => ({
-      path: [appliedFilters.category, label], color: hexToRgb(colorMap[label]),
+      path: [appliedFilters.category, label],
+      color: hexToRgb(colorMap[label]),
     }));
 
     const allObsSets = [
-      ...DYNAMIC_ANNOTATIONS.map((ann) => {
-        const pathSuffix = (!n || n === "N/A" || !r || r === "N/A") ? ann.prefix : `${ann.prefix}_n${n}_r${r}`;
+      ...dynamicAnnotations.map((ann) => {
+        const pathSuffix =
+          !n || n === "N/A" || !r || r === "N/A"
+            ? ann.prefix
+            : `${ann.prefix}_n${n}_r${r}`;
         return { name: ann.name, path: `obs/${pathSuffix}` };
       }),
-      ...EXTRA_OBS_SETS,
+      ...extraObsSets,
     ];
 
     const sortedObsSets = [
@@ -164,80 +236,169 @@ export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
       ...allObsSets.filter((set) => set.name !== appliedFilters.category),
     ].filter((set) => {
       if (!set || !set.path) return false;
-      if (!zarrColumns) return true; 
+      if (!zarrColumns) return true;
       return zarrColumns.includes(set.path.replace("obs/", ""));
     });
 
-    const sampleSetName = EXTRA_OBS_SETS.find(e => e.path.toLowerCase().includes("sample"))?.name || "Sample ID";
-    const slideSetName = EXTRA_OBS_SETS.find(e => e.path.toLowerCase().includes("slide"))?.name || "Slide ID";
+    const sampleSetName =
+      extraObsSets.find((e) => e.path.toLowerCase().includes("sample"))?.name ||
+      "Sample ID";
+    const slideSetName =
+      extraObsSets.find((e) => e.path.toLowerCase().includes("slide"))?.name ||
+      "Slide ID";
 
     const coordinationSpace = {
       embeddingType: { ET_UMAP: "UMAP", ET_SPATIAL: "SPATIAL_VIEW" },
       embeddingObsRadiusMode: { RM1: "manual" },
-      embeddingObsRadius: { R1: VITESSCE_DOT_SIZE },
+      embeddingObsRadius: { R1: dotSize },
       obsSetColor: { OSC1: obsSetColor },
-      featureValueColormap: { CVM1: 'viridis' }, 
-      
+      featureValueColormap: { CVM1: "viridis" },
+
       spatialPointLayer: {
         SPL1: { visible: true, opacity: 0, radius: 0 },
       },
       spatialSegmentationLayer: {
         SSL1: {
-          visible: true, opacity: 0.5, radius: 1, stroked: true, strokedColor: [100, 100, 100],
+          visible: true,
+          opacity: 0.5,
+          radius: 1,
+          stroked: true,
+          strokedColor: [100, 100, 100],
         },
       },
-      obsSetSelection: { OSS1: clickedSlice ? [[appliedFilters.category, clickedSlice]] : null },
-      obsSetFilter: {
-        OSF1: appliedFilters.sample !== "All" ? [[sampleSetName, appliedFilters.sample]]
-          : appliedFilters.slide !== "All" ? [[slideSetName, appliedFilters.slide]] : null
+      obsSetSelection: {
+        OSS1: clickedSlice ? [[appliedFilters.category, clickedSlice]] : null,
       },
-      obsColorEncoding: { OCE1: "cellSetSelection" } 
+      obsSetFilter: {
+        OSF1:
+          appliedFilters.sample !== "All"
+            ? [[sampleSetName, appliedFilters.sample]]
+            : appliedFilters.slide !== "All"
+              ? [[slideSetName, appliedFilters.slide]]
+              : null,
+      },
+      obsColorEncoding: { OCE1: "cellSetSelection" },
     };
 
     const umapScopes = {
-      embeddingType: "ET_UMAP", embeddingObsRadiusMode: "RM1", embeddingObsRadius: "R1",
-      obsSetColor: "OSC1", obsSetSelection: "OSS1", obsSetFilter: "OSF1", obsColorEncoding: "OCE1", 
+      embeddingType: "ET_UMAP",
+      embeddingObsRadiusMode: "RM1",
+      embeddingObsRadius: "R1",
+      obsSetColor: "OSC1",
+      obsSetSelection: "OSS1",
+      obsSetFilter: "OSF1",
+      obsColorEncoding: "OCE1",
     };
-    
+
     const spatialScopes = {
-      spatialPointLayer: "SPL1", spatialSegmentationLayer: "SSL1", obsSetColor: "OSC1",
-      obsSetSelection: "OSS1", obsSetFilter: "OSF1", obsColorEncoding: "OCE1", 
+      spatialPointLayer: "SPL1",
+      spatialSegmentationLayer: "SSL1",
+      obsSetColor: "OSC1",
+      obsSetSelection: "OSS1",
+      obsSetFilter: "OSF1",
+      obsColorEncoding: "OCE1",
     };
-    
-    const obsSetsScopes = { obsSetColor: "OSC1", obsSetSelection: "OSS1", obsSetFilter: "OSF1", obsColorEncoding: "OCE1" };
+
+    const obsSetsScopes = {
+      obsSetColor: "OSC1",
+      obsSetSelection: "OSS1",
+      obsSetFilter: "OSF1",
+      obsColorEncoding: "OCE1",
+    };
 
     const files = [
       {
-        fileType: "anndata-cells.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`,
-        options: { mappings: { UMAP: { key: `obsm/${embedding}`, dims: [0, 1] }, SPATIAL_VIEW: { key: spatialEmbeddingKey, dims: [0, 1] } } },
+        fileType: "anndata-cells.zarr",
+        url: `${API_BASE_URL}/${zarrDir}/`,
+        options: {
+          mappings: {
+            UMAP: { key: `obsm/${embedding}`, dims: [0, 1] },
+            SPATIAL_VIEW: { key: spatialEmbeddingKey, dims: [0, 1] },
+          },
+        },
         coordinationValues: { obsType: "cell" },
       },
       {
-        fileType: "obsSets.anndata.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`, options: sortedObsSets, coordinationValues: { obsType: "cell" },
+        fileType: "obsSets.anndata.zarr",
+        url: `${API_BASE_URL}/${zarrDir}/`,
+        options: sortedObsSets,
+        coordinationValues: { obsType: "cell" },
       },
       {
-        fileType: "obsFeatureMatrix.anndata.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`, options: { path: "X" }, coordinationValues: { obsType: "cell" },
+        fileType: "obsFeatureMatrix.anndata.zarr",
+        url: `${API_BASE_URL}/${zarrDir}/`,
+        options: { path: "X" },
+        coordinationValues: { obsType: "cell" },
       },
       {
-        fileType: "obsLocations.anndata.zarr", url: `${API_BASE_URL}/${ZARR_DIR}/`, options: { path: spatialEmbeddingKey }, coordinationValues: { obsType: "cell" },
+        fileType: "obsLocations.anndata.zarr",
+        url: `${API_BASE_URL}/${zarrDir}/`,
+        options: { path: spatialEmbeddingKey },
+        coordinationValues: { obsType: "cell" },
       },
       {
-        fileType: "obsSegmentations.json", url: `${API_BASE_URL}/${segmentationsFile}`, coordinationValues: { obsType: "cell" },
-      }
+        fileType: "obsSegmentations.json",
+        url: `${API_BASE_URL}/${segmentationsFile}`,
+        coordinationValues: { obsType: "cell" },
+      },
     ];
 
     return {
-      version: "1.0.15", name: "Tyler Spatial View", initStrategy: "auto",
-      datasets: [{ uid: "my-dataset", files: files }], coordinationSpace: coordinationSpace,
+      version: "1.0.15",
+      name: "Spatial View",
+      initStrategy: "auto",
+      datasets: [{ uid: "my-dataset", files }],
+      coordinationSpace,
       layout: [
-        { component: "scatterplot", coordinationScopes: umapScopes, x: 0, y: 0, w: 4, h: 12 },
-        { component: "spatial", coordinationScopes: spatialScopes, x: 4, y: 0, w: 4, h: 12 },
-        { component: "layerController", coordinationScopes: spatialScopes, x: 8, y: 0, w: 4, h: 2 },
-        { component: "obsSets", coordinationScopes: obsSetsScopes, x: 8, y: 2, w: 2, h: 4 },
+        {
+          component: "scatterplot",
+          coordinationScopes: umapScopes,
+          x: 0,
+          y: 0,
+          w: 4,
+          h: 12,
+        },
+        {
+          component: "spatial",
+          coordinationScopes: spatialScopes,
+          x: 4,
+          y: 0,
+          w: 4,
+          h: 12,
+        },
+        {
+          component: "layerController",
+          coordinationScopes: spatialScopes,
+          x: 8,
+          y: 0,
+          w: 4,
+          h: 2,
+        },
+        {
+          component: "obsSets",
+          coordinationScopes: obsSetsScopes,
+          x: 8,
+          y: 2,
+          w: 2,
+          h: 4,
+        },
         { component: "featureList", x: 10, y: 3, w: 2, h: 4 },
       ],
     };
-  }, [n, r, appliedFilters, clickedSlice, colorMap, embedding, zarrColumns]);
+  }, [
+    n,
+    r,
+    appliedFilters,
+    clickedSlice,
+    colorMap,
+    embedding,
+    zarrColumns,
+    dotSize,
+    dynamicAnnotations,
+    extraObsSets,
+    spatialKey,
+    zarrDir,
+  ]);
 
   return (
     <div className="flex flex-col w-full h-full relative">
@@ -250,9 +411,14 @@ export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
           Slide:
           <select
             className="border border-borderMain rounded px-2 py-1 bg-panel text-textMain outline-none focus:border-primary"
-            value={selectedSlide} onChange={handleSlideChange}
+            value={selectedSlide}
+            onChange={handleSlideChange}
           >
-            {availableSlides.map((s) => <option key={s} value={s}>{s}</option>)}
+            {availableSlides.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
           </select>
         </label>
 
@@ -260,9 +426,15 @@ export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
           Sample:
           <select
             className="border border-borderMain rounded px-2 py-1 bg-panel text-textMain outline-none disabled:opacity-50 focus:border-primary"
-            value={selectedSample} onChange={(e) => setSelectedSample(e.target.value)} disabled={availableSamples.length <= 1}
+            value={selectedSample}
+            onChange={(e) => setSelectedSample(e.target.value)}
+            disabled={availableSamples.length <= 1}
           >
-            {availableSamples.map((s) => <option key={s} value={s}>{s}</option>)}
+            {availableSamples.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
           </select>
         </label>
 
@@ -270,40 +442,59 @@ export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
           Color By:
           <select
             className="border border-primary rounded px-2 py-1 bg-primary-light text-primary-dark font-bold outline-none cursor-pointer focus:ring-1 focus:ring-primary"
-            value={activeCategory} onChange={(e) => setActiveCategory(e.target.value)}
+            value={activeCategory}
+            onChange={(e) => setActiveCategory(e.target.value)}
           >
-            {DYNAMIC_ANNOTATIONS.map((ann) => <option key={ann.name} value={ann.name}>{ann.name}</option>)}
-            {EXTRA_OBS_SETS.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
+            {dynamicAnnotations.map((ann) => (
+              <option key={ann.name} value={ann.name}>
+                {ann.name}
+              </option>
+            ))}
+            {extraObsSets.map((s) => (
+              <option key={s.name} value={s.name}>
+                {s.name}
+              </option>
+            ))}
           </select>
         </label>
 
         <div className="ml-auto flex items-center gap-4">
           <button
-            onClick={() => setAppliedFilters({ slide: selectedSlide, sample: selectedSample, category: activeCategory })}
-            className="bg-primary hover:bg-primary-dark text-textInverse text-sm font-bold py-1.5 px-4 rounded shadow transition"
+            onClick={handleApplyFilters}
+            className="bg-primary hover:bg-primary-dark text-textInverse text-sm font-bold py-1.5 px-4 rounded shadow transition cursor-pointer"
           >
             Refresh Plot
           </button>
-          <InfoModal title={tabInfo.interactive.title} content={tabInfo.interactive.content} />
+          <InfoModal
+            title={tabInfo.interactive.title}
+            content={tabInfo.interactive.content}
+          />
         </div>
       </div>
 
       <div className="flex-1 w-full h-full min-h-0 relative overflow-hidden">
         {appliedFilters.slide ? (
-          <Vitessce key={`vitessce-${n}-${r}-${appliedFilters.category}-${appliedFilters.slide}-${appliedFilters.sample}`} config={config} theme="light" />
+          <Vitessce
+            key={`vitessce-${n}-${r}-${appliedFilters.category}-${appliedFilters.slide}-${appliedFilters.sample}`}
+            config={config}
+            theme="light"
+          />
         ) : (
-          <div className="flex items-center justify-center w-full h-full text-textMuted font-bold">Loading random sample...</div>
+          <div className="flex items-center justify-center w-full h-full text-textMuted font-bold">
+            Loading random sample...
+          </div>
         )}
 
         <div className="absolute bottom-0 right-0 w-1/3 h-[50%] bg-panel z-10 border-t border-l border-borderLight p-3 flex flex-col shadow-[-4px_-4px_8px_-1px_rgba(0,0,0,0.05)]">
           <div className="flex justify-between items-center mb-2 pb-2 border-b border-borderLight">
             <span className="text-sm font-bold text-textMain uppercase tracking-wide">
-              Composition: <span className="text-primary">{appliedFilters.category}</span>
+              Composition:{" "}
+              <span className="text-primary">{appliedFilters.category}</span>
             </span>
             {clickedSlice && (
               <button
                 onClick={() => setClickedSlice(null)}
-                className="text-xs font-semibold bg-danger-light border border-danger-light text-danger-dark px-3 py-1 rounded shadow-sm hover:bg-danger hover:text-textInverse transition"
+                className="text-xs font-semibold bg-danger-light border border-danger-light text-danger-dark px-3 py-1 rounded shadow-sm hover:bg-danger hover:text-textInverse transition cursor-pointer"
               >
                 ✕ Clear Plot Filter: <b>{clickedSlice}</b>
               </button>
@@ -315,16 +506,29 @@ export default function VitessceViewer({ n, r, embedding, customColors = {} }) {
               <Plot
                 data={pieChartData}
                 layout={{
-                  autosize: true, margin: { l: 60, r: 60, t: 40, b: 40 }, showlegend: true,
-                  paper_bgcolor: themeColors.paper, plot_bgcolor: themeColors.paper, font: { color: themeColors.label },
+                  autosize: true,
+                  margin: { l: 60, r: 60, t: 40, b: 40 },
+                  showlegend: true,
+                  paper_bgcolor: themeColors.paper,
+                  plot_bgcolor: themeColors.paper,
+                  font: { color: themeColors.label },
                 }}
-                useResizeHandler={true} style={{ width: "100%", height: "100%" }}
+                useResizeHandler={true}
+                style={{ width: "100%", height: "100%" }}
                 onHover={(data) => setHoveredSlice(data.points[0].label)}
                 onUnhover={() => setHoveredSlice(null)}
-                onClick={(data) => setClickedSlice(data.points[0].label === clickedSlice ? null : data.points[0].label)}
+                onClick={(data) =>
+                  setClickedSlice(
+                    data.points[0].label === clickedSlice
+                      ? null
+                      : data.points[0].label,
+                  )
+                }
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-sm text-textMuted">Loading composition data...</div>
+              <div className="flex items-center justify-center h-full text-sm text-textMuted">
+                Loading composition data...
+              </div>
             )}
           </div>
         </div>

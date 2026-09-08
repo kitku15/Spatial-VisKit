@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
@@ -96,7 +96,6 @@ export default function ConditionsDE() {
   const [cellClusters, setCellClusters] = useState(null);
   const [geneExpressions, setGeneExpressions] = useState({});
   const [filterZeros, setFilterZeros] = useState(false);
-  const [chunkIndex, setChunkIndex] = useState({});
 
   useEffect(() => {
     async function initData() {
@@ -104,10 +103,12 @@ export default function ConditionsDE() {
         const meta = await fetch(
           `${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/conditions_de_metadata.json`,
         ).then((r) => r.json());
-        const genes = await fetch(`${API_BASE_URL}/api/genes`).then((r) => r.json());
-        const clusters = await fetch(`${API_BASE_URL}/api/obs`).then((r) => r.json());
-        const chunks = await fetch(`${DATA_DIR}/gene_chunk_index.json`).then((r) => r.json()).catch(() => ({}));
-        setChunkIndex(chunks);
+        const genes = await fetch(`${API_BASE_URL}/api/genes`).then((r) =>
+          r.json(),
+        );
+        const clusters = await fetch(`${API_BASE_URL}/api/obs`).then((r) =>
+          r.json(),
+        );
 
         setConfig(meta.config);
         setComparisonsMap(meta.comparisons);
@@ -121,23 +122,12 @@ export default function ConditionsDE() {
             setSelectedComparison(meta.comparisons[cellTypes[0]][0]);
           }
         }
-      } catch (err) {
+      } catch {
         console.warn("Conditions DE Analysis data not found.");
       }
     }
     initData();
   }, []);
-
-  useEffect(() => {
-    if (selectedCellType && comparisonsMap[selectedCellType]) {
-      const availableComparisons = comparisonsMap[selectedCellType];
-      setSelectedComparison((prev) =>
-        availableComparisons.includes(prev)
-          ? prev
-          : availableComparisons[0] || "",
-      );
-    }
-  }, [selectedCellType, comparisonsMap]);
 
   useEffect(() => {
     if (!selectedCellType || !selectedComparison) return;
@@ -149,17 +139,19 @@ export default function ConditionsDE() {
       .then(setVolcanoData)
       .catch(() => setVolcanoData(null));
 
-    d3.csv(`${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/summary_${selectedCellType}.csv`)
+    d3.csv(
+      `${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/summary_${selectedCellType}.csv`,
+    )
       .then((data) => {
         const compRow = data.find((d) => d.Comparison === selectedComparison);
         if (compRow) {
           const upList = compRow["Top Upregulated"]
-            .replace(/[\[\]']/g, "")
+            .replace(/[[\]']/g, "")
             .split(",")
             .map((s) => s.trim())
             .filter(Boolean);
           const downList = compRow["Top Downregulated"]
-            .replace(/[\[\]']/g, "")
+            .replace(/[[\]']/g, "")
             .split(",")
             .map((s) => s.trim())
             .filter(Boolean);
@@ -178,9 +170,9 @@ export default function ConditionsDE() {
             initialGenes[2] || null,
           ];
 
-          if (panelGenes.every((g) => g === null)) {
-            setPanelGenes(paddedGenes);
-          }
+          setPanelGenes((prev) =>
+            prev.every((g) => g === null) ? paddedGenes : prev,
+          );
           setSummaryTable([compRow]);
         }
       })
@@ -325,7 +317,7 @@ export default function ConditionsDE() {
           line: { color: themeColors.danger },
           meanline: { visible: false },
           points: false,
-          spanmode: "soft",
+          spanmode: "hard",
           box: { visible: false },
         },
         {
@@ -339,7 +331,7 @@ export default function ConditionsDE() {
           line: { color: themeColors.primary },
           meanline: { visible: false },
           points: false,
-          spanmode: "soft",
+          spanmode: "hard",
           box: { visible: false },
         },
       ],
@@ -358,8 +350,11 @@ export default function ConditionsDE() {
             className="border border-borderMain p-2 rounded outline-none w-64 bg-panel text-textMain focus:border-primary"
             value={selectedCellType}
             onChange={(e) => {
-              setSelectedCellType(e.target.value);
+              const newCellType = e.target.value;
+              setSelectedCellType(newCellType);
               setPanelGenes([null, null, null]);
+              const availableComparisons = comparisonsMap[newCellType] || [];
+              setSelectedComparison(availableComparisons[0] || "");
             }}
           >
             {Object.keys(comparisonsMap).map((c) => (
@@ -461,7 +456,7 @@ export default function ConditionsDE() {
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {summaryTable[0]["Top Upregulated"]
-                      .replace(/[\[\]']/g, "")
+                      .replace(/[[\]']/g, "")
                       .split(",")
                       .map((g) => (
                         <span
@@ -479,7 +474,7 @@ export default function ConditionsDE() {
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     {summaryTable[0]["Top Downregulated"]
-                      .replace(/[\[\]']/g, "")
+                      .replace(/[[\]']/g, "")
                       .split(",")
                       .map((g) => (
                         <span

@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
-import { DATA_DIR, themeColors, largeColorPalette, API_BASE_URL } from "./config";
+import { themeColors, largeColorPalette, API_BASE_URL } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
-const createPlotlyComponent = typeof factory === "function" ? factory : factory.default;
+const createPlotlyComponent =
+  typeof factory === "function" ? factory : factory.default;
 const Plot = createPlotlyComponent(Plotly);
 
 export default function CompositionAnalysis({ customColors = {} }) {
@@ -30,7 +31,9 @@ export default function CompositionAnalysis({ customColors = {} }) {
         // Set smart defaults if possible
         if (cols.length > 0) {
           setXaxisCol(cols.includes("DiseaseType") ? "DiseaseType" : cols[0]);
-          setBreakdownCol(cols.includes("Broad_CellType") ? "Broad_CellType" : cols[0]);
+          setBreakdownCol(
+            cols.includes("Broad_CellType") ? "Broad_CellType" : cols[0],
+          );
         }
       })
       .catch((err) => console.error("Could not load cell_clusters.json", err));
@@ -42,10 +45,12 @@ export default function CompositionAnalysis({ customColors = {} }) {
     return Array.from(new Set(obsData[filterCol])).sort();
   }, [obsData, filterCol]);
 
-  useEffect(() => {
-    if (availableFilterVals.length > 0 && !availableFilterVals.includes(filterVal)) {
-      setFilterVal(availableFilterVals[0]);
-    }
+  // Derived filter value: fallback to the first available if current is invalid
+  const effectiveFilterVal = useMemo(() => {
+    if (availableFilterVals.length === 0) return "";
+    return availableFilterVals.includes(filterVal)
+      ? filterVal
+      : availableFilterVals[0];
   }, [availableFilterVals, filterVal]);
 
   // Compute Cross-Tabulation
@@ -63,7 +68,7 @@ export default function CompositionAnalysis({ customColors = {} }) {
     // Loop through all cells
     for (let i = 0; i < xArray.length; i++) {
       // 1. Apply Filter
-      if (fArray && fArray[i] !== filterVal) continue;
+      if (fArray && fArray[i] !== effectiveFilterVal) continue;
 
       const xVal = xArray[i];
       const bVal = bArray[i];
@@ -85,7 +90,10 @@ export default function CompositionAnalysis({ customColors = {} }) {
     // 2. Normalize by index (Rows sum to 1) and create Plotly Traces
     const traces = bLabels.map((bVal, idx) => {
       const yData = xLabels.map((xVal) => {
-        const rowTotal = Object.values(counts[xVal] || {}).reduce((a, b) => a + b, 0);
+        const rowTotal = Object.values(counts[xVal] || {}).reduce(
+          (a, b) => a + b,
+          0,
+        );
         return rowTotal === 0 ? 0 : (counts[xVal][bVal] || 0) / rowTotal;
       });
 
@@ -94,41 +102,63 @@ export default function CompositionAnalysis({ customColors = {} }) {
         y: yData,
         name: bVal,
         type: "bar",
-        marker: { color: customColors[bVal] || largeColorPalette[idx % largeColorPalette.length] },
+        marker: {
+          color:
+            customColors[bVal] ||
+            largeColorPalette[idx % largeColorPalette.length],
+        },
       };
     });
 
     return traces;
-  }, [obsData, xaxisCol, breakdownCol, filterCol, filterVal, customColors]);
+  }, [
+    obsData,
+    xaxisCol,
+    breakdownCol,
+    filterCol,
+    effectiveFilterVal,
+    customColors,
+  ]);
 
   return (
     <div className="p-6 flex flex-col gap-6 h-full bg-app overflow-y-auto">
       {/* Settings Panel */}
       <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-6 items-center">
-        
         {/* Step 1: Filter */}
         <div className="flex gap-2 p-2 border border-borderMain bg-borderLight rounded">
           <label className="text-sm font-semibold flex flex-col gap-1">
-            <span className="text-textMuted uppercase tracking-wide text-xs">Filter By (Col A)</span>
+            <span className="text-textMuted uppercase tracking-wide text-xs">
+              Filter By (Col A)
+            </span>
             <select
               className="border border-borderMain p-2 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
               value={filterCol}
               onChange={(e) => setFilterCol(e.target.value)}
             >
               <option value="None">-- No Filter --</option>
-              {availableCols.map((c) => <option key={c} value={c}>{c}</option>)}
+              {availableCols.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
             </select>
           </label>
 
           {filterCol !== "None" && (
             <label className="text-sm font-semibold flex flex-col gap-1">
-              <span className="text-primary-dark uppercase tracking-wide text-xs">Filter Category</span>
+              <span className="text-primary-dark uppercase tracking-wide text-xs">
+                Filter Category
+              </span>
               <select
                 className="border border-primary bg-primary-light text-primary-dark p-2 rounded outline-none w-48 focus:ring-1 focus:ring-primary"
-                value={filterVal}
+                value={effectiveFilterVal}
                 onChange={(e) => setFilterVal(e.target.value)}
               >
-                {availableFilterVals.map((v) => <option key={v} value={v}>{v}</option>)}
+                {availableFilterVals.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
               </select>
             </label>
           )}
@@ -136,30 +166,45 @@ export default function CompositionAnalysis({ customColors = {} }) {
 
         {/* Step 2: X-Axis */}
         <label className="text-sm font-semibold flex flex-col gap-1">
-          <span className="text-textMuted uppercase tracking-wide text-xs">X-Axis Group (Col C)</span>
+          <span className="text-textMuted uppercase tracking-wide text-xs">
+            X-Axis Group (Col C)
+          </span>
           <select
             className="border border-borderMain p-2 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
             value={xaxisCol}
             onChange={(e) => setXaxisCol(e.target.value)}
           >
-            {availableCols.map((c) => <option key={c} value={c}>{c}</option>)}
+            {availableCols.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
           </select>
         </label>
 
         {/* Step 3: Breakdown */}
         <label className="text-sm font-semibold flex flex-col gap-1">
-          <span className="text-textMuted uppercase tracking-wide text-xs">Breakdown/Colors (Col B)</span>
+          <span className="text-textMuted uppercase tracking-wide text-xs">
+            Breakdown/Colors (Col B)
+          </span>
           <select
             className="border border-borderMain p-2 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
             value={breakdownCol}
             onChange={(e) => setBreakdownCol(e.target.value)}
           >
-            {availableCols.map((c) => <option key={c} value={c}>{c}</option>)}
+            {availableCols.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
           </select>
         </label>
 
         <div className="ml-auto flex items-center gap-4">
-          <InfoModal title={tabInfo.composition.title} content={tabInfo.composition.content} />
+          <InfoModal
+            title={tabInfo.composition.title}
+            content={tabInfo.composition.content}
+          />
         </div>
       </div>
 
@@ -167,13 +212,17 @@ export default function CompositionAnalysis({ customColors = {} }) {
       <div className="bg-panel border border-borderLight shadow-sm rounded flex-1 flex flex-col min-h-[500px]">
         <div className="bg-app border-b border-borderLight px-4 py-2">
           <h3 className="font-bold text-sm text-textMain">
-            {filterCol !== "None" ? `Proportions of ${breakdownCol} inside ${xaxisCol} (Filtered to ${filterCol} == ${filterVal})` : `Proportions of ${breakdownCol} inside ${xaxisCol}`}
+            {filterCol !== "None"
+              ? `Proportions of ${breakdownCol} inside ${xaxisCol} (Filtered to ${filterCol} == ${effectiveFilterVal})`
+              : `Proportions of ${breakdownCol} inside ${xaxisCol}`}
           </h3>
         </div>
-        
+
         <div className="flex-1 relative p-4">
           {!plotData ? (
-            <div className="flex h-full items-center justify-center text-textMuted">Loading data...</div>
+            <div className="flex h-full items-center justify-center text-textMuted">
+              Loading data...
+            </div>
           ) : (
             <Plot
               data={plotData}

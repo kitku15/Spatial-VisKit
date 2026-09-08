@@ -1,14 +1,11 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import {
-  ANALYSIS_NAME,
   channelColorMap,
   defaultChannelColorNames,
-  DATA_DIR,
   API_BASE_URL,
-} 
-from "./config";
+} from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
@@ -92,7 +89,6 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
 export default function MultiplexGeneOverlay() {
   const [hierarchy, setHierarchy] = useState({});
   const [availableSlides, setAvailableSlides] = useState(["__ALL__"]);
-  const [availableSamples, setAvailableSamples] = useState(["__ALL__"]);
   const [selectedSlide, setSelectedSlide] = useState("__ALL__");
   const [selectedSample, setSelectedSample] = useState("__ALL__");
 
@@ -102,7 +98,6 @@ export default function MultiplexGeneOverlay() {
 
   const [channels, setChannels] = useState([]);
   const [exprData, setExprData] = useState({});
-  // const [chunkIndex, setChunkIndex] = useState({});
 
   const [pointSize, setPointSize] = useState(4);
   const [showBackground, setShowBackground] = useState(true);
@@ -117,17 +112,15 @@ export default function MultiplexGeneOverlay() {
           fetch(`${API_BASE_URL}/api/locations`),
         ]);
 
-        const metaData = metaRes ? await metaRes.json() : { hierarchy: { All: ["All"] } };
+        const metaData = metaRes
+          ? await metaRes.json()
+          : { hierarchy: { All: ["All"] } };
         const geneList = await geneRes.json();
         const locations = await locRes.json();
-        
 
         setHierarchy(metaData.hierarchy);
         const slides = Object.keys(metaData.hierarchy);
         setAvailableSlides(["__ALL__", ...slides]);
-        
-        // const chunkData = chunkRes ? await chunkRes.json() : {};
-        // setChunkIndex(chunkData);
 
         if (slides.length === 1) setSelectedSlide(slides[0]);
 
@@ -160,16 +153,16 @@ export default function MultiplexGeneOverlay() {
     loadData();
   }, []);
 
-  useEffect(() => {
-    if (Object.keys(hierarchy).length === 0) return;
-    let samps = [];
+  // Derive available samples based on hierarchy and selected slide
+  const availableSamples = useMemo(() => {
+    if (Object.keys(hierarchy).length === 0) return ["__ALL__"];
     if (selectedSlide === "__ALL__") {
-      samps = Array.from(new Set(Object.values(hierarchy).flat()));
-    } else {
-      samps = hierarchy[selectedSlide] || [];
+      return [
+        "__ALL__",
+        ...Array.from(new Set(Object.values(hierarchy).flat())),
+      ];
     }
-    setAvailableSamples(["__ALL__", ...samps]);
-    if (samps.length === 1) setSelectedSample(samps[0]);
+    return ["__ALL__", ...(hierarchy[selectedSlide] || [])];
   }, [selectedSlide, hierarchy]);
 
   const handleSlideChange = (e) => {
@@ -181,7 +174,9 @@ export default function MultiplexGeneOverlay() {
     channels.forEach((ch) => {
       if (ch.gene && !exprData[ch.gene.safe]) {
         setExprData((prev) => ({ ...prev, [ch.gene.safe]: { loading: true } }));
-        fetch(`${API_BASE_URL}/api/expression/${encodeURIComponent(ch.gene.safe)}`)
+        fetch(
+          `${API_BASE_URL}/api/expression/${encodeURIComponent(ch.gene.safe)}`,
+        )
           .then((r) => r.json())
           .then((data) => {
             setExprData((prev) => ({ ...prev, ...data }));
@@ -284,7 +279,10 @@ export default function MultiplexGeneOverlay() {
       xCoords.push(locData.x[i]);
       yCoords.push(locData.y[i]);
       colors.push(
-        `rgb(${Math.min(255, Math.floor(r))},${Math.min(255, Math.floor(g))},${Math.min(255, Math.floor(b))})`,
+        `rgb(${Math.min(255, Math.floor(r))},${Math.min(
+          255,
+          Math.floor(g),
+        )},${Math.min(255, Math.floor(b))})`,
       );
       hoverTexts.push(hoverStr);
     }
