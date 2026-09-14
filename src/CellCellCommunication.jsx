@@ -55,11 +55,18 @@ function filterInteractionEdges(
   return Array.from(edgeMap.values());
 }
 
-export default function CellCellCommunication({ n, r, datasetConfig }) {
+export default function CellCellCommunication({
+  n,
+  r,
+  datasetConfig,
+  globalUpdateSignal,
+  setHasUnappliedChildChanges,
+}) {
   const [rawData, setRawData] = useState([]);
   const [microenvsDict, setMicroenvsDict] = useState({});
   const [globalCellCounts, setGlobalCellCounts] = useState({});
   const [plotData, setPlotData] = useState([]);
+  const [appliedParams, setAppliedParams] = useState(null);
 
   const [availableMicroenvs, setAvailableMicroenvs] = useState([]);
   const [availableCells, setAvailableCells] = useState([]);
@@ -82,6 +89,63 @@ export default function CellCellCommunication({ n, r, datasetConfig }) {
   const interactionColorScale = useMemo(() => {
     return d3.scaleOrdinal(d3.schemeCategory10).domain(availableInteractions);
   }, [availableInteractions]);
+
+  const handleRefresh = useCallback(() => {
+    if (!rawData.length) return;
+    const filtered = filterInteractionEdges(
+      rawData,
+      selectedCell,
+      selectedInteractions,
+      selectedMicroenv,
+      microenvsDict,
+      globalCellCounts,
+      minCells,
+    );
+    setAppliedParams({
+      microenv: selectedMicroenv,
+      cell: selectedCell,
+      interactions: selectedInteractions,
+      minCells,
+    });
+    setPlotData(filtered);
+  }, [
+    rawData,
+    selectedCell,
+    selectedInteractions,
+    selectedMicroenv,
+    microenvsDict,
+    globalCellCounts,
+    minCells,
+  ]);
+
+  useEffect(() => {
+    if (globalUpdateSignal > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      handleRefresh();
+    }
+  }, [globalUpdateSignal, handleRefresh]);
+
+  // Notify parent if local dropdowns don't match applied params
+  useEffect(() => {
+    if (!setHasUnappliedChildChanges || !appliedParams) return;
+
+    const isDirty =
+      selectedMicroenv !== appliedParams.microenv ||
+      selectedCell !== appliedParams.cell ||
+      minCells !== appliedParams.minCells ||
+      selectedInteractions.length !== appliedParams.interactions.length;
+
+    setHasUnappliedChildChanges(isDirty);
+
+    return () => setHasUnappliedChildChanges(false);
+  }, [
+    selectedMicroenv,
+    selectedCell,
+    minCells,
+    selectedInteractions,
+    appliedParams,
+    setHasUnappliedChildChanges,
+  ]);
 
   useEffect(() => {
     async function loadData() {
@@ -146,6 +210,12 @@ export default function CellCellCommunication({ n, r, datasetConfig }) {
           50,
         );
         setPlotData(initialPlot);
+        setAppliedParams({
+          microenv: initialEnv,
+          cell: initialCell,
+          interactions,
+          minCells: 50,
+        });
       } catch (err) {
         console.error("Could not load CPDB data:", err);
       }
@@ -162,28 +232,6 @@ export default function CellCellCommunication({ n, r, datasetConfig }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const handleRefresh = useCallback(() => {
-    if (!rawData.length) return;
-    const filtered = filterInteractionEdges(
-      rawData,
-      selectedCell,
-      selectedInteractions,
-      selectedMicroenv,
-      microenvsDict,
-      globalCellCounts,
-      minCells,
-    );
-    setPlotData(filtered);
-  }, [
-    rawData,
-    selectedCell,
-    selectedInteractions,
-    selectedMicroenv,
-    microenvsDict,
-    globalCellCounts,
-    minCells,
-  ]);
 
   useEffect(() => {
     if (!d3Container.current) return;
@@ -463,13 +511,6 @@ export default function CellCellCommunication({ n, r, datasetConfig }) {
             </div>
           )}
         </div>
-
-        <button
-          onClick={handleRefresh}
-          className="bg-success-light border border-success text-success-dark font-semibold px-4 py-2 rounded shadow hover:bg-success hover:text-textInverse transition h-[38px]"
-        >
-          Refresh Data
-        </button>
 
         <div className="flex gap-4 border-l border-borderMain pl-4 ml-2">
           <label className="flex-1 min-w-[100px] flex flex-col">

@@ -30,14 +30,14 @@ EXTRA_OBS_SETS = []
 TF_ZARR_FILENAME = ""
 ZARR_FILENAME_ACTUAL = ""
 AVAILABLE_EMBEDDINGS = []
-DYNAMIC_ANNOTATIONS = []
-EXTRA_OBS_SETS = []
+HAS_SEGMENTATIONS = False
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global ZARR_STORE, OBS_DF, VAR_DF, ZARR_PATH, ZARR_FILENAME_ACTUAL
     global SLIDE_COL, SAMPLE_COL, SPATIAL_KEY, TF_ZARR_FILENAME
     global VITESSCE_DOT_SIZE, PRIMARY_ANNOTATION, DYNAMIC_ANNOTATIONS, EXTRA_OBS_SETS, AVAILABLE_EMBEDDINGS
+    global HAS_SEGMENTATIONS
     zarr_filename = None
     
     # 1. Load Configuration (if provided)
@@ -99,7 +99,6 @@ async def lifespan(app: FastAPI):
                     print(f"WARNING: Failed to parse column '{col}': {col_err}")
 
             OBS_DF = pd.DataFrame(obs_dict)
-            
             var_group = ZARR_STORE['var']
             index_name = var_group.attrs.get('_index', '_index')
             VAR_DF = pd.DataFrame(index=var_group[index_name][:])
@@ -116,6 +115,39 @@ async def lifespan(app: FastAPI):
                     if target in ZARR_STORE['obsm']:
                         SPATIAL_KEY = target
                         break
+            
+            # --- AUTO-POPULATE METADATA IF USER DIDN'T PROVIDE JSON ---
+            if not os.path.exists(CONFIG_PATH):
+                DYNAMIC_ANNOTATIONS = [] 
+                for c in OBS_DF.columns:
+                    if c.lower() in ['cell_id', 'centroid_x', 'centroid_y']: continue
+                    if OBS_DF[c].nunique() < 100: 
+                        EXTRA_OBS_SETS.append({"name": str(c).replace("_", " ").title(), "path": f"obs/{c}"})
+
+            # --- HANDLE SEGMENTATION DETECTION ---
+            seg_dir = os.path.join(MODULE_10_DIR, "aux_data", "segmentations")
+            user_provided_seg = os.path.join(MODULE_10_DIR, "segmentations.json")
+
+            if os.path.exists(user_provided_seg):
+                print("Lite Mode: User provided real polygons in 'segmentations.json'!")
+                os.makedirs(seg_dir, exist_ok=True)
+                import shutil
+                shutil.copy(user_provided_seg, os.path.join(seg_dir, "segmentations.json"))
+                
+                # Replicate for slides/samples so filters work
+                for slide in OBS_DF[SLIDE_COL].dropna().unique() if SLIDE_COL in OBS_DF.columns else []:
+                    shutil.copy(user_provided_seg, os.path.join(seg_dir, f"segmentations_Slide_{slide}.json"))
+                for sample in OBS_DF[SAMPLE_COL].dropna().unique() if SAMPLE_COL in OBS_DF.columns else []:
+                    shutil.copy(user_provided_seg, os.path.join(seg_dir, f"segmentations_{sample}.json"))
+                HAS_SEGMENTATIONS = True
+
+            elif os.path.exists(seg_dir) and len([f for f in os.listdir(seg_dir) if f.endswith('.json')]) > 0:
+                print("HPC Pipeline outputs detected. Using existing segmentations.")
+                HAS_SEGMENTATIONS = True
+
+            else:
+                print("No segmentations found. Spatial view will default to interactive Scatterplot mode.")
+                HAS_SEGMENTATIONS = False
 
             print(f"Loaded {len(OBS_DF)} cells and {len(VAR_DF)} genes.")
             print(f"Active Settings -> Slide Col: {SLIDE_COL} | Sample Col: {SAMPLE_COL} | Spatial Key: {SPATIAL_KEY}")
@@ -157,7 +189,6 @@ def get_metadata():
 
     obsm_keys = list(ZARR_STORE['obsm'].keys()) if ZARR_STORE is not None and 'obsm' in ZARR_STORE else []
 
-    # SERVE THE DATASET CONFIG TO REACT!
     return {
         "n_cells": len(OBS_DF),
         "n_genes": len(VAR_DF),
@@ -171,7 +202,8 @@ def get_metadata():
         "primary_annotation": PRIMARY_ANNOTATION,
         "available_embeddings": AVAILABLE_EMBEDDINGS,
         "dynamic_annotations": DYNAMIC_ANNOTATIONS,
-        "extra_obs_sets": EXTRA_OBS_SETS
+        "extra_obs_sets": EXTRA_OBS_SETS,
+        "has_segmentations": HAS_SEGMENTATIONS # <-- Flag sent to React!
     }
 
 @app.get("/api/genes")

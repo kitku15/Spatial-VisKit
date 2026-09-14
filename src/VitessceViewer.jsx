@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Vitessce } from "vitessce";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
@@ -28,6 +28,8 @@ export default function VitessceViewer({
   embedding,
   customColors = {},
   datasetConfig,
+  globalUpdateSignal,
+  setHasUnappliedChildChanges,
 }) {
   // Memoize dataset config values to satisfy exhaustive dependencies
   const dynamicAnnotations = useMemo(
@@ -48,13 +50,13 @@ export default function VitessceViewer({
   const [selectedSlide, setSelectedSlide] = useState("");
   const [selectedSample, setSelectedSample] = useState("");
   const [activeCategory, setActiveCategory] = useState(
-    dynamicAnnotations[0]?.name || "Cell Clusters (Leiden)",
+    dynamicAnnotations[0]?.name || extraObsSets[0]?.name || "Unknown",
   );
 
   const [appliedFilters, setAppliedFilters] = useState({
     slide: "",
     sample: "",
-    category: dynamicAnnotations[0]?.name || "Cell Clusters (Leiden)",
+    category: dynamicAnnotations[0]?.name || extraObsSets[0]?.name || "Unknown",
   });
 
   const [hierarchy, setHierarchy] = useState({});
@@ -81,6 +83,43 @@ export default function VitessceViewer({
     setPrevFilterKey(currentFilterKey);
     setClickedSlice(null);
   }
+  // Notify parent if local dropdowns don't match the applied filters
+  useEffect(() => {
+    if (!setHasUnappliedChildChanges) return;
+
+    const isDirty =
+      selectedSlide !== appliedFilters.slide ||
+      selectedSample !== appliedFilters.sample ||
+      activeCategory !== appliedFilters.category;
+
+    setHasUnappliedChildChanges(isDirty);
+
+    // Clean up when leaving the tab so the button resets
+    return () => setHasUnappliedChildChanges(false);
+  }, [
+    selectedSlide,
+    selectedSample,
+    activeCategory,
+    appliedFilters,
+    setHasUnappliedChildChanges,
+  ]);
+
+  const handleApplyFilters = useCallback(() => {
+    setAppliedFilters({
+      slide: selectedSlide,
+      sample: selectedSample,
+      category: activeCategory,
+    });
+    setClickedSlice(null);
+  }, [selectedSlide, selectedSample, activeCategory]);
+
+  // 2. Update the useEffect dependencies
+  useEffect(() => {
+    if (globalUpdateSignal > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      handleApplyFilters();
+    }
+  }, [globalUpdateSignal, handleApplyFilters]);
 
   useEffect(() => {
     async function fetchData() {
@@ -111,7 +150,10 @@ export default function VitessceViewer({
             setSelectedSample(randomSample);
 
             const initialCategory =
-              dynamicAnnotations[0]?.name || "Cell Clusters (Leiden)";
+              dynamicAnnotations[0]?.name || extraObsSets[0]?.name || "Unknown";
+
+            setActiveCategory(initialCategory); // Ensure dropdown syncs visually
+
             setAppliedFilters({
               slide: randomSlide,
               sample: randomSample,
@@ -126,20 +168,11 @@ export default function VitessceViewer({
       }
     }
     fetchData();
-  }, [dynamicAnnotations]);
+  }, [dynamicAnnotations, extraObsSets]);
 
   const handleSlideChange = (e) => {
     setSelectedSlide(e.target.value);
     setSelectedSample("All");
-  };
-
-  const handleApplyFilters = () => {
-    setAppliedFilters({
-      slide: selectedSlide,
-      sample: selectedSample,
-      category: activeCategory,
-    });
-    setClickedSlice(null);
   };
 
   const internalColName = useMemo(() => {
@@ -207,6 +240,7 @@ export default function VitessceViewer({
   }, [currentDataCounts, colorMap, hoveredSlice, clickedSlice]);
 
   const config = useMemo(() => {
+    const hasSegmentations = datasetConfig?.has_segmentations ?? false;
     const spatialEmbeddingKey = `obsm/${spatialKey}`;
     const segmentationsFile =
       appliedFilters.sample !== "All"
@@ -249,8 +283,11 @@ export default function VitessceViewer({
 
     const coordinationSpace = {
       embeddingType: { ET_UMAP: "UMAP", ET_SPATIAL: "SPATIAL_VIEW" },
-      embeddingObsRadiusMode: { RM1: "manual" },
-      embeddingObsRadius: { R1: dotSize },
+      embeddingZoom: { EZ_UMAP: 0, EZ_SPATIAL: 0 },
+      embeddingTargetX: { EX_UMAP: 0, EX_SPATIAL: 0 },
+      embeddingTargetY: { EY_UMAP: 0, EY_SPATIAL: 0 },
+      embeddingObsRadiusMode: { RM1: "manual", RM_SPATIAL: "manual" },
+      embeddingObsRadius: { R1: dotSize, R_SPATIAL: dotSize },
       obsSetColor: { OSC1: obsSetColor },
       featureValueColormap: { CVM1: "viridis" },
 
@@ -288,6 +325,23 @@ export default function VitessceViewer({
       obsSetSelection: "OSS1",
       obsSetFilter: "OSF1",
       obsColorEncoding: "OCE1",
+      featureSelection: "FS1",
+      featureValueColormap: "CVM1",
+    };
+
+    const spatialScatterplotScopes = {
+      embeddingType: "ET_SPATIAL",
+      embeddingZoom: "EZ_SPATIAL",
+      embeddingTargetX: "EX_SPATIAL",
+      embeddingTargetY: "EY_SPATIAL",
+      embeddingObsRadiusMode: "RM_SPATIAL",
+      embeddingObsRadius: "R_SPATIAL",
+      obsSetColor: "OSC1",
+      obsSetSelection: "OSS1",
+      obsSetFilter: "OSF1",
+      obsColorEncoding: "OCE1",
+      featureSelection: "FS1",
+      featureValueColormap: "CVM1",
     };
 
     const spatialScopes = {
@@ -297,6 +351,8 @@ export default function VitessceViewer({
       obsSetSelection: "OSS1",
       obsSetFilter: "OSF1",
       obsColorEncoding: "OCE1",
+      featureSelection: "FS1",
+      featureValueColormap: "CVM1",
     };
 
     const obsSetsScopes = {
@@ -330,60 +386,114 @@ export default function VitessceViewer({
         options: { path: "X" },
         coordinationValues: { obsType: "cell" },
       },
-      {
+    ];
+
+    // Only inject segmentation files if they actually exist
+    if (hasSegmentations) {
+      files.push({
+        fileType: "obsSegmentations.json",
+        url: `${API_BASE_URL}/${segmentationsFile}?t=${globalUpdateSignal}`,
+        coordinationValues: { obsType: "cell" },
+      });
+      files.push({
         fileType: "obsLocations.anndata.zarr",
         url: `${API_BASE_URL}/${zarrDir}/`,
         options: { path: spatialEmbeddingKey },
         coordinationValues: { obsType: "cell" },
-      },
+      });
+    }
+
+    // Build the dynamic layout
+    const layout = [
       {
-        fileType: "obsSegmentations.json",
-        url: `${API_BASE_URL}/${segmentationsFile}`,
-        coordinationValues: { obsType: "cell" },
+        component: "scatterplot",
+        coordinationScopes: umapScopes,
+        x: 0,
+        y: 0,
+        w: 4,
+        h: 12,
+        props: { title: "UMAP" },
       },
     ];
 
+    if (hasSegmentations) {
+      layout.push({
+        component: "spatial",
+        coordinationScopes: spatialScopes,
+        x: 4,
+        y: 0,
+        w: 4,
+        h: 12,
+        props: { title: "Spatial (Segmentations)" },
+      });
+      layout.push({
+        component: "layerController",
+        coordinationScopes: spatialScopes,
+        x: 8,
+        y: 0,
+        w: 4,
+        h: 3,
+        props: { title: "Spatial Layers" },
+      });
+      layout.push({
+        component: "obsSets",
+        coordinationScopes: obsSetsScopes,
+        x: 8,
+        y: 3,
+        w: 2,
+        h: 9,
+      });
+      layout.push({
+        component: "featureList",
+        coordinationScopes: {
+          featureSelection: "FS1",
+          obsColorEncoding: "OCE1",
+        },
+        x: 10,
+        y: 3,
+        w: 2,
+        h: 9,
+      });
+    } else {
+      // Substitute the Spatial Viewer with a Scatterplot Viewer
+      layout.push({
+        component: "scatterplot",
+        coordinationScopes: spatialScatterplotScopes,
+        x: 4,
+        y: 0,
+        w: 4,
+        h: 12,
+        props: { title: "Spatial (Coordinates)" },
+      });
+      // Expand the right side menus since LayerController is no longer needed
+      layout.push({
+        component: "obsSets",
+        coordinationScopes: obsSetsScopes,
+        x: 8,
+        y: 0,
+        w: 2,
+        h: 12,
+      });
+      layout.push({
+        component: "featureList",
+        coordinationScopes: {
+          featureSelection: "FS1",
+          obsColorEncoding: "OCE1",
+        },
+        x: 10,
+        y: 0,
+        w: 2,
+        h: 12,
+      });
+    }
+
     return {
       version: "1.0.15",
-      name: "Spatial View",
+      name: "Interactive Explorer",
       initStrategy: "auto",
       datasets: [{ uid: "my-dataset", files }],
       coordinationSpace,
-      layout: [
-        {
-          component: "scatterplot",
-          coordinationScopes: umapScopes,
-          x: 0,
-          y: 0,
-          w: 4,
-          h: 12,
-        },
-        {
-          component: "spatial",
-          coordinationScopes: spatialScopes,
-          x: 4,
-          y: 0,
-          w: 4,
-          h: 12,
-        },
-        {
-          component: "layerController",
-          coordinationScopes: spatialScopes,
-          x: 8,
-          y: 0,
-          w: 4,
-          h: 2,
-        },
-        {
-          component: "obsSets",
-          coordinationScopes: obsSetsScopes,
-          x: 8,
-          y: 2,
-          w: 2,
-          h: 4,
-        },
-        { component: "featureList", x: 10, y: 3, w: 2, h: 4 },
-      ],
+      layout,
     };
   }, [
     n,
@@ -398,6 +508,8 @@ export default function VitessceViewer({
     extraObsSets,
     spatialKey,
     zarrDir,
+    datasetConfig,
+    globalUpdateSignal,
   ]);
 
   return (
@@ -459,12 +571,6 @@ export default function VitessceViewer({
         </label>
 
         <div className="ml-auto flex items-center gap-4">
-          <button
-            onClick={handleApplyFilters}
-            className="bg-primary hover:bg-primary-dark text-textInverse text-sm font-bold py-1.5 px-4 rounded shadow transition cursor-pointer"
-          >
-            Refresh Plot
-          </button>
           <InfoModal
             title={tabInfo.interactive.title}
             content={tabInfo.interactive.content}
@@ -473,7 +579,7 @@ export default function VitessceViewer({
       </div>
 
       <div className="flex-1 w-full h-full min-h-0 relative overflow-hidden">
-        {appliedFilters.slide ? (
+        {appliedFilters.slide && compositionData ? (
           <Vitessce
             key={`vitessce-${n}-${r}-${appliedFilters.category}-${appliedFilters.slide}-${appliedFilters.sample}`}
             config={config}
@@ -481,7 +587,7 @@ export default function VitessceViewer({
           />
         ) : (
           <div className="flex items-center justify-center w-full h-full text-textMuted font-bold">
-            Loading random sample...
+            Loading spatial data...
           </div>
         )}
 

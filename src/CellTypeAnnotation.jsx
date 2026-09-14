@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import InfoModal from "./InfoModal";
@@ -16,33 +16,35 @@ const hexToRgba = (hex, alpha) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-export default function CellTypeAnnotation({
-  availableColumns,
-  datasetConfig,
-}) {
+export default function CellTypeAnnotation({ datasetConfig }) {
+  const [availableCols, setAvailableCols] = useState([]);
+
+  // Fetch all categorical columns just like CompositionAnalysis
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/obs`)
+      .then((res) => res.json())
+      .then((data) => {
+        setAvailableCols(Object.keys(data).sort());
+      })
+      .catch((err) => console.error("Could not load categorical obs", err));
+  }, []);
+
   const allowedOptions = useMemo(() => {
-    const dynamicAnnotations = datasetConfig?.dynamic_annotations || [];
     const extraObsSets = datasetConfig?.extra_obs_sets || [];
     const options = [];
 
-    availableColumns.forEach((col) => {
-      const match = dynamicAnnotations.find((ann) =>
-        col.startsWith(ann.prefix),
-      );
-      if (match) {
-        options.push({ value: col, label: col });
+    availableCols.forEach((col) => {
+      let label = col;
+      // If the column has a friendly name defined in the config, use it!
+      const extraMatch = extraObsSets.find((e) => e.path === `obs/${col}`);
+      if (extraMatch) {
+        label = extraMatch.name;
       }
-    });
-
-    extraObsSets.forEach((set) => {
-      const rawCol = set.path.replace("obs/", "");
-      if (availableColumns.includes(rawCol)) {
-        options.push({ value: rawCol, label: set.name });
-      }
+      options.push({ value: col, label: label });
     });
 
     return options;
-  }, [availableColumns, datasetConfig]);
+  }, [availableCols, datasetConfig]);
 
   const [userSelectedCols, setUserSelectedCols] = useState([]);
 
