@@ -118,10 +118,12 @@ export default function CellCellCommunication({
     minCells,
   ]);
 
+  const prevSignalRef = useRef(globalUpdateSignal);
+
   useEffect(() => {
-    if (globalUpdateSignal > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (globalUpdateSignal > prevSignalRef.current) {
       handleRefresh();
+      prevSignalRef.current = globalUpdateSignal;
     }
   }, [globalUpdateSignal, handleRefresh]);
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Vitessce } from "vitessce";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
@@ -113,11 +113,12 @@ export default function VitessceViewer({
     setClickedSlice(null);
   }, [selectedSlide, selectedSample, activeCategory]);
 
-  // 2. Update the useEffect dependencies
+  const prevSignalRef = useRef(globalUpdateSignal);
+
   useEffect(() => {
-    if (globalUpdateSignal > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (globalUpdateSignal > prevSignalRef.current) {
       handleApplyFilters();
+      prevSignalRef.current = globalUpdateSignal;
     }
   }, [globalUpdateSignal, handleApplyFilters]);
 
