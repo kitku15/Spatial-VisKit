@@ -1,10 +1,6 @@
 {
   "rewrites": [
     {
-      "source": "/data_static/(.*)",
-      "destination": "/data_static/$1"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
