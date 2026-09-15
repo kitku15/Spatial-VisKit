@@ -4,15 +4,24 @@
 // THESE ARE CONTROLLED BY YOUR ROOT .env FILE
 // =========================================================
 export const APP_MODE = import.meta.env.VITE_APP_MODE || "full";
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 export const PROJECT_TITLE =
   import.meta.env.VITE_PROJECT_TITLE || "Spatial Transcriptomics Explorer";
 
+const rawApiUrl = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+const isStatic = !rawApiUrl.startsWith("http");
+
+// FIX 1: Vitessce requires a full URL (http://). If static, append the browser's current domain.
+export const API_BASE_URL = isStatic
+  ? `${window.location.origin}${rawApiUrl}`
+  : rawApiUrl;
+
 // =========================================================
-// PIPELINE CONVENTIONS (Do not change)
+// PIPELINE CONVENTIONS (Auto-adjusts for Static vs Docker)
 // =========================================================
-export const DATA_DIR = "data/aux_data";
+// FIX 2: FastAPI mounted to a virtual "/data" folder. Static hosting doesn't.
+export const DATA_DIR = isStatic ? "aux_data" : "data/aux_data";
+export const ZARR_PREFIX = isStatic ? "" : "data/";
+
 export const SPATIAL_CCC_PREFIXES = { LR: "LR_", CCC: "CCC_" };
 export const MICROENV_PREFIX = "spatial_microenv_";
 export const DEFAULT_MORPH_METRIC = "Area (µm²)";

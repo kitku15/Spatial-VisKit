@@ -5,6 +5,7 @@ import factory from "react-plotly.js/factory";
 import {
   API_BASE_URL,
   DATA_DIR,
+  ZARR_PREFIX,
   largeColorPalette,
   themeColors,
 } from "./config";
@@ -45,7 +46,7 @@ export default function VitessceViewer({
   );
   const spatialKey = datasetConfig?.spatial_key || "global";
   const dotSize = datasetConfig?.vitessce_dot_size || 2;
-  const zarrDir = `data/${datasetConfig?.zarr_filename}`;
+  const zarrDir = `${ZARR_PREFIX}${datasetConfig?.zarr_filename}`;
 
   const [selectedSlide, setSelectedSlide] = useState("");
   const [selectedSample, setSelectedSample] = useState("");
@@ -63,7 +64,7 @@ export default function VitessceViewer({
   const [availableSlides, setAvailableSlides] = useState(["All"]);
 
   const [compositionData, setCompositionData] = useState(null);
-  const [zarrColumns, setZarrColumns] = useState(null);
+  // const [zarrColumns, setZarrColumns] = useState(null);
   const [hoveredSlice, setHoveredSlice] = useState(null);
   const [clickedSlice, setClickedSlice] = useState(null);
 
@@ -125,11 +126,11 @@ export default function VitessceViewer({
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/metadata`);
+        const res = await fetch(`${API_BASE_URL}/api/metadata.json`);
         if (res.ok) {
           const data = await res.json();
           setHierarchy(data.hierarchy);
-          setZarrColumns(data.obs_columns);
+          // setZarrColumns(data.obs_columns);
 
           const slides = Object.keys(data.hierarchy);
           setAvailableSlides(
@@ -162,7 +163,7 @@ export default function VitessceViewer({
             });
           }
         }
-        const compRes = await fetch(`${API_BASE_URL}/api/composition`);
+        const compRes = await fetch(`${API_BASE_URL}/api/composition.json`);
         if (compRes.ok) setCompositionData(await compRes.json());
       } catch (err) {
         console.warn("Could not load spatial metadata", err);
@@ -266,14 +267,10 @@ export default function VitessceViewer({
       ...extraObsSets,
     ];
 
-    const sortedObsSets = [
-      allObsSets.find((set) => set.name === appliedFilters.category),
-      ...allObsSets.filter((set) => set.name !== appliedFilters.category),
-    ].filter((set) => {
-      if (!set || !set.path) return false;
-      if (!zarrColumns) return true;
-      return zarrColumns.includes(set.path.replace("obs/", ""));
-    });
+    const activeObsSet = allObsSets.find(
+      (set) => set.name === appliedFilters.category,
+    );
+    const sortedObsSets = activeObsSet ? [activeObsSet] : [];
 
     const sampleSetName =
       extraObsSets.find((e) => e.path.toLowerCase().includes("sample"))?.name ||
@@ -503,7 +500,6 @@ export default function VitessceViewer({
     clickedSlice,
     colorMap,
     embedding,
-    zarrColumns,
     dotSize,
     dynamicAnnotations,
     extraObsSets,

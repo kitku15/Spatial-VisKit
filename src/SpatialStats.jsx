@@ -49,7 +49,7 @@ export default function SpatialStats({
   useEffect(() => {
     async function fetchMetadata() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/metadata`);
+        const res = await fetch(`${API_BASE_URL}/api/metadata.json`);
         if (!res.ok) return;
         const data = await res.json();
         setHierarchy(data.hierarchy);

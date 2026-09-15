@@ -21,7 +21,7 @@ export default function CellTypeAnnotation({ datasetConfig }) {
 
   // Fetch all categorical columns just like CompositionAnalysis
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/obs`)
+    fetch(`${API_BASE_URL}/api/obs.json`)
       .then((res) => res.json())
       .then((data) => {
         setAvailableCols(Object.keys(data).sort());
@@ -123,7 +123,7 @@ export default function CellTypeAnnotation({ datasetConfig }) {
         const colB = selectedCols[i + 1];
 
         const response = await fetch(
-          `${API_BASE_URL}/api/sankey?col_a=${colA}&col_b=${colB}`,
+          `${API_BASE_URL}/api/sankey/${colA}__${colB}.json`,
         );
         if (!response.ok)
           throw new Error(`Data not found for: ${colA} → ${colB}`);

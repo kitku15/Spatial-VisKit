@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import VitessceSpatialCCC from "./VitessceSpatialCCC";
-import { API_BASE_URL, SPATIAL_CCC_PREFIXES } from "./config";
+import { API_BASE_URL, SPATIAL_CCC_PREFIXES, ZARR_PREFIX } from "./config";
 import InfoModal from "./InfoModal";
 import { tabInfo } from "./infoHelper";
 
@@ -85,7 +85,7 @@ export default function SpatialCCC({ datasetConfig }) {
     () => datasetConfig?.extra_obs_sets || [],
     [datasetConfig],
   );
-  const zarrDir = `data/${datasetConfig?.zarr_filename}`;
+  const zarrDir = `${ZARR_PREFIX}${datasetConfig?.zarr_filename}`;
 
   const [selectedSlide, setSelectedSlide] = useState("All");
   const [selectedSample, setSelectedSample] = useState("All");
@@ -100,7 +100,7 @@ export default function SpatialCCC({ datasetConfig }) {
   const [selectedInteraction, setSelectedInteraction] = useState("");
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/metadata`)
+    fetch(`${API_BASE_URL}/api/metadata.json`)
       .then((res) => res.json())
       .then((data) => {
         setHierarchy(data.hierarchy);

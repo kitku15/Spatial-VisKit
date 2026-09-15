@@ -103,10 +103,10 @@ export default function ConditionsDE() {
         const meta = await fetch(
           `${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/conditions_de_metadata.json`,
         ).then((r) => r.json());
-        const genes = await fetch(`${API_BASE_URL}/api/genes`).then((r) =>
+        const genes = await fetch(`${API_BASE_URL}/api/genes.json`).then((r) =>
           r.json(),
         );
-        const clusters = await fetch(`${API_BASE_URL}/api/obs`).then((r) =>
+        const clusters = await fetch(`${API_BASE_URL}/api/obs.json`).then((r) =>
           r.json(),
         );
 
@@ -182,10 +182,15 @@ export default function ConditionsDE() {
   useEffect(() => {
     panelGenes.forEach((g) => {
       if (g && !geneExpressions[g.safe]) {
-        fetch(`${API_BASE_URL}/api/expression/${encodeURIComponent(g.safe)}`)
+        fetch(
+          `${API_BASE_URL}/api/expression/${encodeURIComponent(g.safe)}.json`,
+        )
           .then((r) => r.json())
           .then((data) => {
-            setGeneExpressions((prev) => ({ ...prev, ...data }));
+            setGeneExpressions((prev) => ({
+              ...prev,
+              [g.safe]: data[g.original] || data[g.safe],
+            }));
           });
       }
     });

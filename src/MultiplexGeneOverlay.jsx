@@ -107,9 +107,9 @@ export default function MultiplexGeneOverlay() {
       setIsLoading(true);
       try {
         const [metaRes, geneRes, locRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/metadata`).catch(() => null),
-          fetch(`${API_BASE_URL}/api/genes`),
-          fetch(`${API_BASE_URL}/api/locations`),
+          fetch(`${API_BASE_URL}/api/metadata.json`).catch(() => null),
+          fetch(`${API_BASE_URL}/api/genes.json`),
+          fetch(`${API_BASE_URL}/api/locations.json`),
         ]);
 
         const metaData = metaRes
@@ -175,11 +175,14 @@ export default function MultiplexGeneOverlay() {
       if (ch.gene && !exprData[ch.gene.safe]) {
         setExprData((prev) => ({ ...prev, [ch.gene.safe]: { loading: true } }));
         fetch(
-          `${API_BASE_URL}/api/expression/${encodeURIComponent(ch.gene.safe)}`,
+          `${API_BASE_URL}/api/expression/${encodeURIComponent(ch.gene.safe)}.json`,
         )
           .then((r) => r.json())
           .then((data) => {
-            setExprData((prev) => ({ ...prev, ...data }));
+            setExprData((prev) => ({
+              ...prev,
+              [ch.gene.safe]: data[ch.gene.original] || data[ch.gene.safe],
+            }));
           })
           .catch((err) => console.error(`Failed to load gene`, err));
       }

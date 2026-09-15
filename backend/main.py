@@ -88,13 +88,29 @@ async def lifespan(app: FastAPI):
                 if col.startswith('_'): continue
                 try:
                     item = obs_group[col]
+                    
+                    # 1. Handle standard Arrays (and AnnData v0.8+ Categoricals)
                     if isinstance(item, zarr.Array):
-                        obs_dict[col] = item[:]
+                        codes = item[:]
+                        # Check if it has a secret categorical dictionary attached!
+                        if 'categories' in item.attrs:
+                            cat_key = item.attrs['categories']
+                            if cat_key in obs_group:
+                                cats_array = obs_group[cat_key][:]
+                                cats = [c.decode('utf-8') if isinstance(c, bytes) else str(c) for c in cats_array]
+                                obs_dict[col] = [cats[c] if c >= 0 else "Unknown" for c in codes]
+                            else:
+                                obs_dict[col] = codes
+                        else:
+                            obs_dict[col] = codes
+                            
+                    # 2. Handle AnnData v0.7- Categoricals (Groups)
                     elif isinstance(item, zarr.Group):
                         if 'codes' in item and 'categories' in item:
                             codes = item['codes'][:]
                             cats = [c.decode('utf-8') if isinstance(c, bytes) else str(c) for c in item['categories'][:]]
                             obs_dict[col] = [cats[c] if c >= 0 else "Unknown" for c in codes]
+                            
                 except Exception as col_err:
                     print(f"WARNING: Failed to parse column '{col}': {col_err}")
 

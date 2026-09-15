@@ -107,7 +107,7 @@ const Layout = ({
           {/* Logo */}
           <div className="p-4 bg-borderLight flex justify-center border-b border-borderMain shrink-0">
             <img
-              src="/logo_hor.svg"
+              src="/assets/logo_hor.svg"
               alt="Project Logo"
               className="h-8 w-auto"
             />
@@ -373,7 +373,7 @@ export default function App() {
   useEffect(() => {
     async function fetchZarrMetadata() {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/metadata`);
+        const response = await fetch(`${API_BASE_URL}/api/metadata.json`);
         const data = await response.json();
 
         setDatasetConfig(data);

@@ -21,7 +21,7 @@ export default function CompositionAnalysis({ customColors = {} }) {
 
   // Fetch the data
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/obs`)
+    fetch(`${API_BASE_URL}/api/obs.json`)
       .then((res) => res.json())
       .then((data) => {
         setObsData(data);

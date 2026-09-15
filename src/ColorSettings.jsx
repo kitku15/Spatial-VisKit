@@ -11,7 +11,7 @@ export default function ColorSettings({ customColors, setCustomColors }) {
   const [selectedCol, setSelectedCol] = useState("");
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/obs`)
+    fetch(`${API_BASE_URL}/api/obs.json`)
       // fetch(`/${DATA_DIR}/cell_clusters.json`)
       .then((res) => res.json())
       .then((data) => {

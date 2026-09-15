@@ -108,10 +108,10 @@ export default function DEAnalysis({ customColors = {} }) {
       const annos = Object.keys(meta);
       setAnnotations(annos);
       if (annos.length > 0) setSelectedAnnotation(annos[0]);
-      fetch(`${API_BASE_URL}/api/obs`)
+      fetch(`${API_BASE_URL}/api/obs.json`)
         .then((r) => r.json())
         .then(setClusterLabels);
-      fetch(`${API_BASE_URL}/api/genes`)
+      fetch(`${API_BASE_URL}/api/genes.json`)
         .then((r) => r.json())
         .then(setAvailableGenes);
     }
@@ -174,9 +174,11 @@ export default function DEAnalysis({ customColors = {} }) {
 
   useEffect(() => {
     if (gene1) {
-      fetch(`${API_BASE_URL}/api/expression/${encodeURIComponent(gene1.safe)}`)
+      fetch(
+        `${API_BASE_URL}/api/expression/${encodeURIComponent(gene1.safe)}.json`,
+      )
         .then((r) => r.json())
-        .then((data) => setExpr1(data[gene1.safe]));
+        .then((data) => setExpr1(data[gene1.original] || data[gene1.safe]));
     }
   }, [gene1]);
 

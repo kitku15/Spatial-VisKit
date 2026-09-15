@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Vitessce } from "vitessce";
-import { API_BASE_URL, DATA_DIR } from "./config";
+import { API_BASE_URL, DATA_DIR, ZARR_PREFIX } from "./config";
 
 const hexToRgb = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -19,7 +19,7 @@ export default function VitessceCCC({
   const spatialKey = datasetConfig?.spatial_key || "global";
   const primaryAnnotation =
     datasetConfig?.primary_annotation || "Final_Annotation";
-  const zarrDir = `data/${datasetConfig?.zarr_filename}`;
+  const zarrDir = `${ZARR_PREFIX}${datasetConfig?.zarr_filename}`;
 
   const config = useMemo(() => {
     if (!datasetConfig) return null;

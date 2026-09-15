@@ -1,6 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { Vitessce } from "vitessce";
-import { API_BASE_URL, DATA_DIR, largeColorPalette } from "./config";
+import {
+  API_BASE_URL,
+  DATA_DIR,
+  largeColorPalette,
+  ZARR_PREFIX,
+} from "./config";
 
 const hexToRgb = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -36,18 +41,18 @@ export default function VitessceTF({
     "_web.zarr",
     "_tf_web.zarr",
   );
-  const zarrDir = `data/${datasetConfig?.zarr_filename}`;
-  const tfZarrDir = `data/${datasetConfig?.tf_zarr_filename || tfFallback}`;
+  const zarrDir = `${ZARR_PREFIX}${datasetConfig?.zarr_filename}`;
+  const tfZarrDir = `${ZARR_PREFIX}${datasetConfig?.tf_zarr_filename || tfFallback}`;
 
-  const [zarrColumns, setZarrColumns] = useState(null);
+  // const [zarrColumns, setZarrColumns] = useState(null);
   const [obsData, setObsData] = useState(null);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/metadata`)
-      .then((res) => res.json())
-      .then((data) => setZarrColumns(data.obs_columns))
-      .catch((err) => console.warn(err));
-    fetch(`${API_BASE_URL}/api/obs`)
+    // fetch(`${API_BASE_URL}/api/metadata.json`)
+    //   .then((res) => res.json())
+    //   .then((data) => setZarrColumns(data.obs_columns))
+    //   .catch((err) => console.warn(err));
+    fetch(`${API_BASE_URL}/api/obs.json`)
       .then((res) => res.json())
       .then(setObsData)
       .catch((err) => console.warn(err));
@@ -114,13 +119,8 @@ export default function VitessceTF({
       ...extraObsSets,
     ];
 
-    const sortedObsSets = [
-      allObsSets.find((set) => set.name === activeCategory),
-      ...allObsSets.filter((set) => set.name !== activeCategory),
-    ].filter((set) => {
-      if (!set || !set.path || !zarrColumns) return false;
-      return zarrColumns.includes(set.path.replace("obs/", ""));
-    });
+    const activeObsSet = allObsSets.find((set) => set.name === activeCategory);
+    const sortedObsSets = activeObsSet ? [activeObsSet] : [];
 
     const sampleSetName =
       extraObsSets.find((e) => e.path.toLowerCase().includes("sample"))?.name ||
@@ -310,7 +310,7 @@ export default function VitessceTF({
     embedding,
     clusterLabels,
     activeCategory,
-    zarrColumns,
+    // zarrColumns,
     datasetConfig,
     spatialKey,
     zarrDir,
