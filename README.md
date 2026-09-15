@@ -2,9 +2,9 @@
 
 <img src="assets/logo_hor.svg" alt="Logo" width="600">
 
-An interactive, web-based visualization tool for exploring spatial transcriptomics (ST)datasets. Built to explore ST analysis results from **[this Xenium & CosMx pipeline](https://github.com/kitku15/scST-pipeline/)**.
+An interactive, web-based visualization tool for exploring single cell spatial transcriptomics (ST) datasets. Built to explore ST analysis results from **[this Xenium & CosMx pipeline](https://github.com/kitku15/scST-pipeline/)**, while also allowing users to load and explore their own ST analysis results.
 
-Spatial-VisKit allows researchers to visually explore tissue maps, UMAPs, cell-cell communication, transcription factor activity, and clustering directly in their web browser.
+Together with the [pipeline](https://github.com/kitku15/scST-pipeline/), Spatial-VisKit allows users to explore tissue maps, UMAPs, cell-cell communication, transcription factor activity, and clustering directly in their web browser.
 
 <img src="assets/demo.gif" alt="Spatial-VisKit Demo" width="800">
 
@@ -19,7 +19,7 @@ Spatial-VisKit allows researchers to visually explore tissue maps, UMAPs, cell-c
 
 Place your dataset folder into the `public/` directory of this app.
 
-1. Locate your dataset folder. This might be an output from the main pipeline (e.g., `my_data`) or your own dataset in zarr format.
+1. Locate your dataset folder. This might be an output from the pipeline (e.g., `my_data`) or your own dataset in spatial data zarr format.
 2. Copy that entire folder into the `public/` folder of Spatial-VisKit.
 3. Your folder structure should look like this:
    ```text
@@ -34,14 +34,14 @@ Place your dataset folder into the `public/` directory of this app.
    ├── docker-compose.yml
    └── ...
    ```
-   The `my_data_tf.zarr` and `aux_data` is included inside the output folder from the main pipeline. If using your own dataset, this is not needed.
+   The `my_data_tf.zarr` and `aux_data` is included inside the output folder from the pipeline. If using your own dataset, this is not needed.
 
 ### Step 2: Configure the App
 
 There are **two** configuration files:
 
-1. **`.env`**: Tells the app which dataset folder to load and what mode to run in.
-2. **`dataset_config.json`**: placed inside your dataset folder and tells the app how to read your specific dataset. Use this exact file name.
+1. **`.env`**: Tells the app which dataset folder to load and what mode to run in. This makes it easy to switch between multiple datasets if you have them.
+2. **`dataset_config.json`**: placed inside your dataset folder and tells the app how to read your specific dataset. Use this exact file name. If you have multiple datasets, you should have a config in each of their folders.
 
 #### A. `.env`
 
@@ -70,7 +70,7 @@ Inside your specific dataset folder (e.g., `public/my_data/`), there must be a f
 <details>
 <summary><b>Click to view example for "FULL" Mode (HPC Pipeline Output)</b></summary>
 
-**When to use:** Use this mode if your dataset was processed by the main pipeline and includes advanced data like Transcription Factors, Spatial Stats, and Cell-Cell Communication files.
+**When to use:** Use this mode if your dataset was processed by the pipeline.
 
 ```json
 {
@@ -287,8 +287,7 @@ Visuazlize results from LIANA+ and Corneto. Map how external signals trigger int
 
 ## ⭐ Author
 
-This application was developed as a part of a project for the MRes in Bioinformatics and Theoretical Systems Biology at Imperial College London. The work was supervised by Tamas Korcsmaros and Balazs Bohar.
+This application was developed as a part of a project for the MRes in Bioinformatics and Theoretical Systems Biology at Imperial College London. The work was supervised by Dr Tamas Korcsmaros and Dr Balazs Bohar.
 
 - 😸 Author: Bunga Tiasyaira Hutasuhut (Syaii)
-- 📩 Academic Email: bth22@ic.ac.uk
-- 📮 Personal Email: bungatiasyaira@outlook.com
+- 📮 Email: bungatiasyaira@outlook.com
