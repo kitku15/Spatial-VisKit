@@ -19,8 +19,8 @@ export const API_BASE_URL = isStatic
 // PIPELINE CONVENTIONS (Auto-adjusts for Static vs Docker)
 // =========================================================
 // FIX 2: FastAPI mounted to a virtual "/data" folder. Static hosting doesn't.
-export const DATA_DIR = isStatic ? "aux_data" : "data/aux_data";
-export const ZARR_PREFIX = isStatic ? "" : "data/";
+export const DATA_DIR = "aux_data";
+export const ZARR_PREFIX = "";
 
 export const SPATIAL_CCC_PREFIXES = { LR: "LR_", CCC: "CCC_" };
 export const MICROENV_PREFIX = "spatial_microenv_";
