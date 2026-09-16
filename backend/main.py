@@ -115,7 +115,10 @@ async def lifespan(app: FastAPI):
                     if target in ZARR_STORE['obsm']:
                         SPATIAL_KEY = target
                         break
-            
+                    
+            if SLIDE_COL and SLIDE_COL in OBS_DF.columns:
+                OBS_DF[SLIDE_COL] = OBS_DF[SLIDE_COL].astype(str).apply(lambda x: f"Slide_{x}" if x.isdigit() else x)
+
             # --- AUTO-POPULATE METADATA IF USER DIDN'T PROVIDE JSON ---
             if not os.path.exists(CONFIG_PATH):
                 DYNAMIC_ANNOTATIONS = [] 
