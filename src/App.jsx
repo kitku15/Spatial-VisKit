@@ -109,7 +109,7 @@ const Layout = ({
             <img
               src="/logo_hor.svg"
               alt="Project Logo"
-              className="h-8 w-auto"
+              className="h-10 w-auto"
             />
           </div>
 
