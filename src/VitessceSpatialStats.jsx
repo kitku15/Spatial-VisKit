@@ -105,14 +105,8 @@ export default function VitessceSpatialStats({
       ...extraObsSets,
     ];
 
-    const sortedObsSets = [
-      allObsSets.find((set) => set.name === activeCategory),
-      ...allObsSets.filter((set) => set.name !== activeCategory),
-    ].filter((set) => {
-      if (!set || !set.path) return false;
-      if (!zarrColumns) return true;
-      return zarrColumns.includes(set.path.replace("obs/", ""));
-    });
+    const activeObsSet = allObsSets.find((set) => set.name === activeCategory);
+    const sortedObsSets = activeObsSet ? [activeObsSet] : [];
 
     const sampleSetName =
       extraObsSets.find((e) => e.path.toLowerCase().includes("sample"))?.name ||

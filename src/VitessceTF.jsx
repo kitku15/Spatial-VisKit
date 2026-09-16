@@ -114,13 +114,8 @@ export default function VitessceTF({
       ...extraObsSets,
     ];
 
-    const sortedObsSets = [
-      allObsSets.find((set) => set.name === activeCategory),
-      ...allObsSets.filter((set) => set.name !== activeCategory),
-    ].filter((set) => {
-      if (!set || !set.path || !zarrColumns) return false;
-      return zarrColumns.includes(set.path.replace("obs/", ""));
-    });
+    const activeObsSet = allObsSets.find((set) => set.name === activeCategory);
+    const sortedObsSets = activeObsSet ? [activeObsSet] : [];
 
     const sampleSetName =
       extraObsSets.find((e) => e.path.toLowerCase().includes("sample"))?.name ||
