@@ -77,21 +77,21 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
 }
 
 export default function SpatialCCC({ datasetConfig }) {
-  const dynamicAnnotations = useMemo(
-    () => datasetConfig?.dynamic_annotations || [],
-    [datasetConfig],
-  );
-  const extraObsSets = useMemo(
-    () => datasetConfig?.extra_obs_sets || [],
-    [datasetConfig],
-  );
+  // const dynamicAnnotations = useMemo(
+  //   () => datasetConfig?.dynamic_annotations || [],
+  //   [datasetConfig],
+  // );
+  // const extraObsSets = useMemo(
+  //   () => datasetConfig?.extra_obs_sets || [],
+  //   [datasetConfig],
+  // );
   const zarrDir = `data/${datasetConfig?.zarr_filename}`;
 
   const [selectedSlide, setSelectedSlide] = useState("All");
   const [selectedSample, setSelectedSample] = useState("All");
-  const [activeCategory, setActiveCategory] = useState(
-    dynamicAnnotations[0]?.name || "Cell Clusters (Leiden)",
-  );
+  // const [activeCategory, setActiveCategory] = useState(
+  //   dynamicAnnotations[0]?.name || "Cell Clusters (Leiden)",
+  // );
 
   const [hierarchy, setHierarchy] = useState({});
   const [availableSlides, setAvailableSlides] = useState(["All"]);
@@ -207,7 +207,7 @@ export default function SpatialCCC({ datasetConfig }) {
           </label>
         </div>
 
-        <label className="text-sm font-semibold flex flex-col gap-1 border-l border-borderMain pl-4 text-textMain">
+        {/* <label className="text-sm font-semibold flex flex-col gap-1 border-l border-borderMain pl-4 text-textMain">
           <span className="text-textMuted uppercase tracking-wider text-xs">
             Identify Target Cell Types
           </span>
@@ -227,7 +227,7 @@ export default function SpatialCCC({ datasetConfig }) {
               </option>
             ))}
           </select>
-        </label>
+        </label> */}
 
         <div className="ml-auto flex items-center">
           <InfoModal

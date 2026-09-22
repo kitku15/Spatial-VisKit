@@ -4,6 +4,7 @@ import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
 import {
   themeColors,
+  largeColorPalette,
   DATA_DIR,
   DEFAULT_MORPH_METRIC,
   API_BASE_URL,
@@ -265,20 +266,20 @@ export default function SpatialStats({
     const uniqueClusters = Array.from(new Set(morphData.map((d) => d.Cluster)))
       .filter(Boolean)
       .sort();
-    const violinTraces = uniqueClusters.map((clusterName) => {
-      const clusterData = morphData.filter((d) => d.Cluster === clusterName);
-      const metricValues = clusterData
-        .map((d) => parseFloat(d[activeMorphMetric]))
-        .filter((v) => !isNaN(v));
-      return {
-        y: metricValues,
-        type: "violin",
-        name: `Cluster ${clusterName}`,
-        box: { visible: true },
-        meanline: { visible: true },
-        marker: { color: customColors[clusterName] || themeColors.primary },
-      };
-    });
+    const violinTraces = uniqueClusters.map((clusterName, i) => {
+    const clusterData = morphData.filter((d) => d.Cluster === clusterName);
+    const metricValues = clusterData
+      .map((d) => parseFloat(d[activeMorphMetric]))
+      .filter((v) => !isNaN(v));
+    return {
+      y: metricValues,
+      type: "violin",
+      name: `Cluster ${clusterName}`,
+      box: { visible: true },
+      meanline: { visible: true },
+      marker: { color: customColors[clusterName] || largeColorPalette[i % largeColorPalette.length] }, 
+    };
+  });
 
     return (
       <div className="flex flex-col h-full gap-4">
