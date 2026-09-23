@@ -322,7 +322,7 @@ const Layout = ({
   );
 };
 
-export default function App() {
+function MainApp() {
   const [availableN, setAvailableN] = useState([]);
   const [selectedN, setSelectedN] = useState("");
   const [selectedR, setSelectedR] = useState("");
@@ -637,4 +637,10 @@ export default function App() {
       </Layout>
     </Router>
   );
+}
+
+export default function App() {
+  // Just render the MainApp directly. 
+  // The middleware protects the site before React even loads.
+  return <MainApp />;
 }

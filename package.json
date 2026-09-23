@@ -13,6 +13,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "cookie": "^2.0.1",
     "d3": "^7.9.0",
     "plotly.js": "^3.6.0",
     "plotly.js-dist-min": "^3.6.0",
