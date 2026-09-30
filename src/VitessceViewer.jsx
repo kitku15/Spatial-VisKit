@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Vitessce } from "vitessce";
 import Plotly from "plotly.js-dist-min";
+import { downloadVitessceView } from "./exportUtils";
+import ExportImageModal from "./ExportImageModal";
 import factory from "react-plotly.js/factory";
 import {
   API_BASE_URL,
@@ -66,6 +68,15 @@ export default function VitessceViewer({
   const [zarrColumns, setZarrColumns] = useState(null);
   const [hoveredSlice, setHoveredSlice] = useState(null);
   const [clickedSlice, setClickedSlice] = useState(null);
+  const vitessceRef = useRef(null);
+  
+  // Export Modal State
+  const [exportModalState, setExportModalState] = useState({
+    isOpen: false,
+    viewTitle: "",
+    defaultFilename: "",
+    defaultBg: "#ffffff"
+  });
 
   // Derive available samples based on selectedSlide and hierarchy
   const availableSamples = useMemo(() => {
@@ -565,7 +576,40 @@ export default function VitessceViewer({
           </select>
         </label>
 
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-3">
+          <button
+            onClick={() => setExportModalState({
+              isOpen: true,
+              viewTitle: "UMAP",
+              defaultFilename: `UMAP_${appliedFilters.sample || appliedFilters.slide}`,
+              defaultBg: "#ffffff"
+            })}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+            title="Export UMAP Image"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            UMAP
+          </button>
+          
+          <button
+            onClick={() => {
+              const spatialTitle = datasetConfig?.has_segmentations ? "Spatial (Segmentations)" : "Spatial (Coordinates)";
+              setExportModalState({
+                isOpen: true,
+                viewTitle: spatialTitle,
+                defaultFilename: `Spatial_${appliedFilters.sample || appliedFilters.slide}`,
+                defaultBg: "#000000"
+              });
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+            title="Export Spatial Image"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            Spatial
+          </button>
+
+          <div className="border-l border-borderMain h-6 mx-1"></div>
+
           <InfoModal
             title={tabInfo.interactive.title}
             content={tabInfo.interactive.content}
@@ -573,7 +617,7 @@ export default function VitessceViewer({
         </div>
       </div>
 
-      <div className="flex-1 w-full h-full min-h-0 relative overflow-hidden">
+      <div ref={vitessceRef} className="flex-1 w-full h-full min-h-0 relative overflow-hidden">
         {appliedFilters.slide && compositionData ? (
           <Vitessce
             key={`vitessce-${n}-${r}-${appliedFilters.category}-${appliedFilters.slide}-${appliedFilters.sample}`}
@@ -586,7 +630,26 @@ export default function VitessceViewer({
           </div>
         )}
 
-        <div className="absolute bottom-0 right-0 w-1/3 h-[50%] bg-panel z-10 border-t border-l border-borderLight p-3 flex flex-col shadow-[-4px_-4px_8px_-1px_rgba(0,0,0,0.05)]">
+        <ExportImageModal
+        isOpen={exportModalState.isOpen}
+        onClose={() => setExportModalState(prev => ({ ...prev, isOpen: false }))}
+        defaultFilename={exportModalState.defaultFilename}
+        defaultBg={exportModalState.defaultBg}
+        onExport={(settings) => {
+          downloadVitessceView({
+            containerRef: vitessceRef,
+            viewTitle: exportModalState.viewTitle,
+            filename: settings.filename,
+            bgColor: settings.bgColor,
+            scaleMultiplier: settings.scale,
+            includeLegend: settings.includeLegend,
+            legends: [{ title: appliedFilters.category, map: colorMap }]
+          });
+          setExportModalState(prev => ({ ...prev, isOpen: false }));
+        }}
+      />
+
+      <div className="absolute bottom-0 right-0 w-1/3 h-[50%] bg-panel z-10 border-t border-l border-borderLight p-3 flex flex-col shadow-[-4px_-4px_8px_-1px_rgba(0,0,0,0.05)]">
           <div className="flex justify-between items-center mb-2 pb-2 border-b border-borderLight">
             <span className="text-sm font-bold text-textMain uppercase tracking-wide">
               Composition:{" "}
@@ -613,6 +676,13 @@ export default function VitessceViewer({
                   paper_bgcolor: themeColors.paper,
                   plot_bgcolor: themeColors.paper,
                   font: { color: themeColors.label },
+                }}
+                config={{
+                  displayModeBar: true,
+                  toImageButtonOptions: {
+                    format: 'svg',
+                    filename: `composition_${appliedFilters.slide}_${appliedFilters.sample}`
+                  }
                 }}
                 useResizeHandler={true}
                 style={{ width: "100%", height: "100%" }}

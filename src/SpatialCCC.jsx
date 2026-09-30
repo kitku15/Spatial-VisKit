@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import VitessceSpatialCCC from "./VitessceSpatialCCC";
 import { API_BASE_URL, SPATIAL_CCC_PREFIXES } from "./config";
 import InfoModal from "./InfoModal";
+import ExportImageModal from "./ExportImageModal";
+import { downloadVitessceView } from "./exportUtils";
 import { tabInfo } from "./infoHelper";
 
 function SearchableSelect({ options, value, onChange, placeholder }) {
@@ -98,6 +100,14 @@ export default function SpatialCCC({ datasetConfig }) {
 
   const [availableInteractions, setAvailableInteractions] = useState([]);
   const [selectedInteraction, setSelectedInteraction] = useState("");
+  const vitessceRef = useRef(null);
+
+  const [exportModalState, setExportModalState] = useState({
+    isOpen: false,
+    viewTitle: "",
+    defaultFilename: "",
+    defaultBg: "#000000"
+  });
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/metadata`)
@@ -229,13 +239,64 @@ export default function SpatialCCC({ datasetConfig }) {
           </select>
         </label> */}
 
-        <div className="ml-auto flex items-center">
+        <div className="ml-auto flex items-center gap-3">
+          {isLR ? (
+            <>
+              <button
+                onClick={() => setExportModalState({ isOpen: true, viewTitle: `Interaction Score: ${selectedInteraction.replace("LR_", "")}`, defaultFilename: `Score_${selectedInteraction.replace("LR_", "")}`, defaultBg: "#000000" })}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+              >
+                📷 Score
+              </button>
+              <button
+                onClick={() => setExportModalState({ isOpen: true, viewTitle: `Ligand Expression: ${ligand}`, defaultFilename: `Ligand_${ligand}`, defaultBg: "#000000" })}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+              >
+                📷 Ligand
+              </button>
+              <button
+                onClick={() => setExportModalState({ isOpen: true, viewTitle: `Receptor Expression: ${receptor}`, defaultFilename: `Receptor_${receptor}`, defaultBg: "#000000" })}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+              >
+                📷 Receptor
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setExportModalState({ isOpen: true, viewTitle: `NMF Factor Score: ${selectedInteraction.replace("CCC_", "")}`, defaultFilename: `NMF_${selectedInteraction.replace("CCC_", "")}`, defaultBg: "#000000" })}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+            >
+              📷 Map
+            </button>
+          )}
+
+          <div className="border-l border-borderMain h-6 mx-1"></div>
+
           <InfoModal
             title={tabInfo.spatialCcc?.title}
             content={tabInfo.spatialCcc?.content}
           />
         </div>
       </div>
+
+      <ExportImageModal
+        isOpen={exportModalState.isOpen}
+        onClose={() => setExportModalState(prev => ({ ...prev, isOpen: false }))}
+        defaultFilename={exportModalState.defaultFilename}
+        defaultBg={exportModalState.defaultBg}
+        allowLegend={false}
+        onExport={(settings) => {
+          downloadVitessceView({
+            containerRef: vitessceRef,
+            viewTitle: exportModalState.viewTitle,
+            filename: settings.filename,
+            bgColor: settings.bgColor,
+            scaleMultiplier: settings.scale,
+            includeLegend: false
+          });
+          setExportModalState(prev => ({ ...prev, isOpen: false }));
+        }}
+      />
 
       <div className="flex gap-4 flex-1 min-h-0">
         <div className="w-full bg-panel border border-borderLight shadow-sm rounded flex flex-col overflow-hidden relative z-10">
@@ -247,7 +308,7 @@ export default function SpatialCCC({ datasetConfig }) {
               Maps for {isLR ? "Ligand-Receptor pairs" : "NMF factors"}
             </span>
           </div>
-          <div className="flex-1 relative">
+          <div className="flex-1 relative" ref={vitessceRef}>
             {!selectedInteraction ? (
               <div className="flex items-center justify-center h-full text-textMuted">
                 No LIANA Spatial CCC data found in Zarr store.
