@@ -51,8 +51,6 @@ Quantify tissue heterogeneity across different samples or conditions.
 </details>
 
 <details>
-
-<details>
 <summary>Multiplex Overlay</summary>
 <img src="assets/multiplex_overlay.png" alt="Logo" width="600">
 
@@ -62,6 +60,7 @@ Visualize the spatial overlap of up to 5 genes simultaneously.
 - **Intensity Thresholds:** Use sliders to filter out low-expression background noise and isolate stronger signals.
 </details>
 
+<details>
 <summary>Data Export</summary>
 
 Export your selected cells and metadata as a CSV file for further analysis in Excel or other tools.
