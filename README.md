@@ -2,156 +2,17 @@
 
 <img src="assets/logo_hor.svg" alt="Logo" width="600">
 
-An interactive, web-based visualization tool for exploring single cell spatial transcriptomics (ST) datasets. Built to explore ST analysis results from **[this Xenium & CosMx pipeline](https://github.com/kitku15/scST-pipeline/)**, while also allowing users to load and explore their own ST analysis results.
+An interactive, web-based visualization tool for exploring single cell spatial transcriptomics (ST) datasets. Built to explore ST analysis results from the **[scSpatial-Kit pipeline](https://github.com/kitku15/scST-pipeline/)**, while also allowing users to load and explore their own ST analysis results.
 
-Together with the [pipeline](https://github.com/kitku15/scST-pipeline/), Spatial-VisKit allows users to explore tissue maps, UMAPs, cell-cell communication, transcription factor activity, and clustering directly in their web browser.
+Spatial-VisKit allows users to explore tissue maps, UMAPs, cell-cell communication, transcription factor activity, and clustering directly in their web browser. Users can also download filtered data and export plots and spatial tissue maps. More features are planned for future releases!
+
+- [Read the documentation on the pipeline (**scSpatial-Kit**)](https://kitku15.github.io/scST-pipeline/)
+
+- [Read the documentation on the visualization tool (**Spatial-VisKit**)](https://kitku15.github.io/scST-pipeline/svk/home/)
 
 <img src="assets/demo.gif" alt="Spatial-VisKit Demo" width="800">
 
-## 🛠️ Prerequisites
-
-1. Download and install **[Docker Desktop](https://www.docker.com/products/docker-desktop/)**.
-2. Make sure Docker Desktop is open and running in the background before proceeding.
-
-## ⚙️ Set Up
-
-### Step 1: Prepare Your Data
-
-Place your dataset folder into the `public/` directory of this app.
-
-1. Locate your dataset folder. This might be an output from the pipeline (e.g., `my_data`) or your own dataset in spatial data zarr format.
-2. Copy that entire folder into the `public/` folder of Spatial-VisKit.
-3. Your folder structure should look like this:
-   ```text
-   Spatial-VisKit/
-   ├── public/
-   │   ├── my_data/
-   │   │   ├── dataset_config.json
-   │   │   ├── my_data.zarr
-   │   │   ├── my_data_tf.zarr
-   │   │   └── aux_data
-   ├── .env
-   ├── docker-compose.yml
-   └── ...
-   ```
-   The `my_data_tf.zarr` and `aux_data` is included inside the output folder from the pipeline. If using your own dataset, this is not needed.
-
-### Step 2: Configure the App
-
-There are **two** configuration files:
-
-1. **`.env`**: Tells the app which dataset folder to load and what mode to run in. This makes it easy to switch between multiple datasets if you have them.
-2. **`dataset_config.json`**: placed inside your dataset folder and tells the app how to read your specific dataset. Use this exact file name. If you have multiple datasets, you should have a config in each of their folders.
-
-#### A. `.env`
-
-Open the file named `.env` (located in the main Spatial-VisKit folder) using any basic text editor (Notepad, VS Code.). Update the values to match the dataset you want to view.
-
-```env
-# 1. The exact name of your dataset folder inside the /public directory
-ACTIVE_DATASET_FOLDER=my_data
-
-# 2. What mode is the app in?
-# "full" = Pipeline Output (Includes spatial stats, cell-cell comm, TF analysis)
-# "lite" = Use-Your-Own-Data (Basic spatial, UMAP, and expression viewing)
-VITE_APP_MODE=full
-
-# 3. A title to be displayed in the app
-VITE_PROJECT_TITLE="CosMx SMI: My Data XYZ"
-
-# 4. Do not change this
-VITE_API_BASE_URL=http://localhost:8000
-```
-
-#### B. `dataset_config.json`
-
-Inside your specific dataset folder (e.g., `public/my_data/`), there must be a file named `dataset_config.json`. This tells the visualizer what columns and arrays to map.
-
-<details>
-<summary><b>Click to view example for "FULL" Mode (HPC Pipeline Output)</b></summary>
-
-**When to use:** Use this mode if your dataset was processed by the pipeline.
-
-```json
-{
-  "zarr_filename": "my_data_web.zarr", # name of my zarr folder
-  "tf_zarr_filename": "my_data_tf_web.zarr", # name of my zarr tf folder
-  "spatial_key": "global", # key in obsm for spatial coordinates
-  "slide_col": "slide_ID", # obs collumn for slide id
-  "sample_col": "sample_id", # obs collumn for sample id
-  "primary_annotation": "Final_Annotation", # cell type labels used for downstream analysis
-  "dynamic_annotations": # leiden cell type clusters (change depending on n and r)
-  [
-    {"name": "Cell Clusters (Leiden)", "prefix": "leiden" }
-  ],
-  "extra_obs_sets": # additional categorical columns in "my_data_web.zarr" obs
-  [
-    { "name": "Disease Type", "path": "obs/DiseaseType" },
-    { "name": "Treatment Response", "path": "obs/TreatmentResponse" },
-    { "name": "FOV", "path": "obs/fov" },
-    { "name": "Cell Lineage", "path": "obs/Broad_Lineage" },
-    { "name": "Cell Type", "path": "obs/Final_Annotation" }
-  ]
-}
-```
-
-</details>
-
-<details>
-<summary><b>Click to view example for "LITE" Mode (Bring-Your-Own-Data)</b></summary>
-
-**When to use:** Use this mode if you only have a `.zarr` file and want to explore Spatial plots, UMAPs, and basic gene expression mapping.
-
-```json
-{
-  "zarr_filename": "my_data.zarr", # name of my zarr folder
-  "spatial_key": "global", # key in obsm for spatial coordinates
-  "slide_col": "slide_id", # obs collumn for slide id
-  "sample_col": "slide_id", # obs collumn for sample id
-  "primary_annotation": "leiden_n30_r1.0", # ???
-
-  "available_embeddings": # embeddings in your dataset in "my_data_web.zarr" obsm
-  [
-    { "name": "UMAP", "path": "obsm/X_umap" },
-    { "name": "PCA", "path": "obsm/X_pca" }
-  ],
-
-  "dynamic_annotations": [], # leave blank???
-
-  "extra_obs_sets": # additional categorical columns in "my_data_web.zarr" obs
-  [
-    { "name": "Disease Type", "path": "obs/DiseaseType" },
-    { "name": "Cell Type", "path": "obs/CellType" }
-  ]
-}
-```
-
-</details>
-
----
-
-### Step 3: Run the Application
-
-Once your data is in the `public/` folder and your `.env` file is saved:
-
-1. Open your computer's Terminal (Mac) or Command Prompt/PowerShell (Windows).
-2. Navigate to the main Spatial-VisKit folder.
-3. Run the following command:
-   ```bash
-   docker-compose up --build
-   ```
-4. Wait for the setup to finish. It will download the necessary containers and launch the tool.
-5. Open your web browser and go to: **`http://localhost:5173`**
-
-### To Stop the Application:
-
-Go back to your terminal window where Docker is running and press `Ctrl + C`.
-
-**⚠️ Important:** If you ever change the `ACTIVE_DATASET_FOLDER` in your `.env` file, you **must** stop the application (`Ctrl + C`) and restart it by typing `docker-compose up --build` again.
-
 ## 🎨 Features
-
-The app has 12 tabs: 4 for data exploration in both Lite and Full mode, and 8 for exploring the main HPC pipeline outputs.
 
 ### Explore
 
@@ -165,6 +26,7 @@ The main tab for exploring your dataset.
 - **Gene Expression:** Search for any gene in the dataset to visualize expression on spatial coordinates and UMAP (based on values in adata.X)
 - **Label Composition:** Click any slice in the bottom-right composition pie chart to isolate and highlight only that specific cell type in the spatial and UMAP maps. The pie chart shows the compositions of each label based on which slide/sample is selected.
 - **Lasso Tool:** Select cells in either the spatial plot or embedding, with the selected cells highlighted simultaneously in both views.
+- **Download Tissue/UMAP plots:** Customize the tissue map or UMAP view, including the background, and download the current view as a PNG image.
 </details>
 
 <details>
@@ -189,6 +51,8 @@ Quantify tissue heterogeneity across different samples or conditions.
 </details>
 
 <details>
+
+<details>
 <summary>Multiplex Overlay</summary>
 <img src="assets/multiplex_overlay.png" alt="Logo" width="600">
 
@@ -196,6 +60,17 @@ Visualize the spatial overlap of up to 5 genes simultaneously.
 
 - **Additive RGB Blending:** Assign different colors (Red, Green, Blue, Magenta, Cyan, Yellow) to specific genes. Overlapping expressions will blend (e.g., Red + Green = Yellow).
 - **Intensity Thresholds:** Use sliders to filter out low-expression background noise and isolate stronger signals.
+</details>
+
+<summary>Data Export</summary>
+
+Export your selected cells and metadata as a CSV file for further analysis in Excel or other tools.
+
+- **Select cells:** Use the lasso tool to select cells directly on the UMAP or tissue map.
+- **Filter cells:** Filter by specific metadata categories, such as cell type or disease condition.
+- **Select metadata:** Include some, all, or none of the available metadata columns.
+- **Include gene expression:** Add expression values for any number of selected genes, or omit gene expression entirely.
+
 </details>
 
 <br/>
@@ -239,7 +114,7 @@ Visualize results from DecoupleR.
 
 Visualize results from Cellphonedb. Map microenvironment-level signaling between different cell populations.
 
-- **Chord Diagram:** Visualizes directed ligand-receptor interactions. Thick ribbon bases indicate the Sender (Ligand), pointing toward the Receiver (Receptor).
+- **Chord Diagram:** Visualizes directed ligand-receptor interactions. Thick ribbon bases indicate the Sender (Ligand), pointing toward the Receiver (Receptor). This plot can be downloaded as an svg.
 - **Deep Filtering:** Isolate interactions happening strictly within a specific spatial microenvironment, involving a specific focal cell type, or limited to specific Ligand-Receptor pairs.
 </details>
 
@@ -251,6 +126,7 @@ Visualize results from LIANA+ ligand-receptor colocalization analysis. Visualize
 
 - **Interaction Mapping:** Select a specific Ligand-Receptor pair or NMF Communication Factor to see its exact spatial footprint on the tissue.
 - **Split Views:** Simultaneously view the combined interaction score alongside the isolated expression of the Sender's Ligand and the Receiver's Receptor.
+- **Download Tissueplots:** Customize the tissue map view, including the background, and download the current view as a PNG image.
 </details>
 
 <details>
@@ -290,4 +166,4 @@ Visuazlize results from LIANA+ and Corneto. Map how external signals trigger int
 This application was developed as a part of a project for the MRes in Bioinformatics and Theoretical Systems Biology at Imperial College London. The work was supervised by Dr Tamas Korcsmaros and Dr Balazs Bohar.
 
 - 😸 Author: Bunga Tiasyaira Hutasuhut (Syaii)
-- 📮 Email: bungatiasyaira@outlook.com
+- 📮 Email: akbarah97@gmail.com
