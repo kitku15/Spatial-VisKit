@@ -3,3 +3,5 @@ uvicorn
 zarr
 pandas
 numpy
+scipy
+pydantic
