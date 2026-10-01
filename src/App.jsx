@@ -20,6 +20,7 @@ import SpatialCCC from "./SpatialCCC";
 import ConditionsCausal from "./ConditionsCausal";
 import CompositionAnalysis from "./CompositionAnalysis";
 import ColorSettings from "./ColorSettings";
+import DataExport from "./DataExport";
 
 // --- NAVIGATION CONFIGURATION ---
 const exploreLinks = [
@@ -27,6 +28,7 @@ const exploreLinks = [
   { to: "/annotation", label: "Cell Type Annotation" },
   { to: "/composition", label: "Composition Analysis" },
   { to: "/multiplex", label: "Multiplex Overlay" },
+  { to: "/export", label: "Data Export & Filtering" },
 ];
 
 const analysisLinks = [
@@ -550,6 +552,7 @@ export default function App() {
             element={<CompositionAnalysis customColors={customColors} />}
           />
           <Route path="/multiplex" element={<MultiplexGeneOverlay />} />
+          <Route path="/export" element={<DataExport />} />
           <Route
             path="/colors"
             element={

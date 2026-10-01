@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import VitessceSpatialCCC from "./VitessceSpatialCCC";
 import { API_BASE_URL, SPATIAL_CCC_PREFIXES } from "./config";
 import InfoModal from "./InfoModal";
-import ExportImageModal from "./ExportImageModal";
+import ExportImageModal, { CameraIcon } from "./ExportImageModal";
 import { downloadVitessceView } from "./exportUtils";
 import { tabInfo } from "./infoHelper";
 
@@ -79,21 +79,12 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
 }
 
 export default function SpatialCCC({ datasetConfig }) {
-  // const dynamicAnnotations = useMemo(
-  //   () => datasetConfig?.dynamic_annotations || [],
-  //   [datasetConfig],
-  // );
-  // const extraObsSets = useMemo(
-  //   () => datasetConfig?.extra_obs_sets || [],
-  //   [datasetConfig],
-  // );
   const zarrDir = `data/${datasetConfig?.zarr_filename}`;
 
   const [selectedSlide, setSelectedSlide] = useState("All");
   const [selectedSample, setSelectedSample] = useState("All");
-  // const [activeCategory, setActiveCategory] = useState(
-  //   dynamicAnnotations[0]?.name || "Cell Clusters (Leiden)",
-  // );
+
+  const [layoutMode, setLayoutMode] = useState("horizontal");
 
   const [hierarchy, setHierarchy] = useState({});
   const [availableSlides, setAvailableSlides] = useState(["All"]);
@@ -106,7 +97,7 @@ export default function SpatialCCC({ datasetConfig }) {
     isOpen: false,
     viewTitle: "",
     defaultFilename: "",
-    defaultBg: "#000000"
+    defaultBg: "#000000",
   });
 
   useEffect(() => {
@@ -217,56 +208,78 @@ export default function SpatialCCC({ datasetConfig }) {
           </label>
         </div>
 
-        {/* <label className="text-sm font-semibold flex flex-col gap-1 border-l border-borderMain pl-4 text-textMain">
-          <span className="text-textMuted uppercase tracking-wider text-xs">
-            Identify Target Cell Types
-          </span>
-          <select
-            className="border border-primary rounded px-2 py-1 bg-primary-light text-primary-dark font-bold outline-none cursor-pointer focus:ring-1 focus:ring-primary"
-            value={activeCategory}
-            onChange={(e) => setActiveCategory(e.target.value)}
-          >
-            {dynamicAnnotations.map((ann) => (
-              <option key={ann.name} value={ann.name}>
-                {ann.name}
-              </option>
-            ))}
-            {extraObsSets.map((s) => (
-              <option key={s.name} value={s.name}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label> */}
-
         <div className="ml-auto flex items-center gap-3">
           {isLR ? (
             <>
               <button
-                onClick={() => setExportModalState({ isOpen: true, viewTitle: `Interaction Score: ${selectedInteraction.replace("LR_", "")}`, defaultFilename: `Score_${selectedInteraction.replace("LR_", "")}`, defaultBg: "#000000" })}
+                onClick={() =>
+                  setLayoutMode((prev) =>
+                    prev === "horizontal" ? "vertical" : "horizontal",
+                  )
+                }
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
               >
-                📷 Score
+                {layoutMode === "horizontal"
+                  ? "◫ Side-by-Side View"
+                  : "⊟ Top-Bottom View"}
               </button>
               <button
-                onClick={() => setExportModalState({ isOpen: true, viewTitle: `Ligand Expression: ${ligand}`, defaultFilename: `Ligand_${ligand}`, defaultBg: "#000000" })}
+                onClick={() =>
+                  setExportModalState({
+                    isOpen: true,
+                    viewTitle: `Interaction Score: ${selectedInteraction.replace("LR_", "")}`,
+                    defaultFilename: `Score_${selectedInteraction.replace("LR_", "")}`,
+                    defaultBg: "#000000",
+                  })
+                }
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
               >
-                📷 Ligand
+                <CameraIcon />
+                Score
               </button>
               <button
-                onClick={() => setExportModalState({ isOpen: true, viewTitle: `Receptor Expression: ${receptor}`, defaultFilename: `Receptor_${receptor}`, defaultBg: "#000000" })}
+                onClick={() =>
+                  setExportModalState({
+                    isOpen: true,
+                    viewTitle: `Ligand Expression: ${ligand}`,
+                    defaultFilename: `Ligand_${ligand}`,
+                    defaultBg: "#000000",
+                  })
+                }
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
               >
-                📷 Receptor
+                <CameraIcon />
+                Ligand
+              </button>
+              <button
+                onClick={() =>
+                  setExportModalState({
+                    isOpen: true,
+                    viewTitle: `Receptor Expression: ${receptor}`,
+                    defaultFilename: `Receptor_${receptor}`,
+                    defaultBg: "#000000",
+                  })
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+              >
+                <CameraIcon />
+                Receptor
               </button>
             </>
           ) : (
             <button
-              onClick={() => setExportModalState({ isOpen: true, viewTitle: `NMF Factor Score: ${selectedInteraction.replace("CCC_", "")}`, defaultFilename: `NMF_${selectedInteraction.replace("CCC_", "")}`, defaultBg: "#000000" })}
+              onClick={() =>
+                setExportModalState({
+                  isOpen: true,
+                  viewTitle: `NMF Factor Score: ${selectedInteraction.replace("CCC_", "")}`,
+                  defaultFilename: `NMF_${selectedInteraction.replace("CCC_", "")}`,
+                  defaultBg: "#000000",
+                })
+              }
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
             >
-              📷 Map
+              <CameraIcon />
+              Map
             </button>
           )}
 
@@ -281,20 +294,28 @@ export default function SpatialCCC({ datasetConfig }) {
 
       <ExportImageModal
         isOpen={exportModalState.isOpen}
-        onClose={() => setExportModalState(prev => ({ ...prev, isOpen: false }))}
+        onClose={() =>
+          setExportModalState((prev) => ({ ...prev, isOpen: false }))
+        }
         defaultFilename={exportModalState.defaultFilename}
         defaultBg={exportModalState.defaultBg}
-        allowLegend={false}
+        allowLegend={true}
         onExport={(settings) => {
-          downloadVitessceView({
-            containerRef: vitessceRef,
-            viewTitle: exportModalState.viewTitle,
-            filename: settings.filename,
-            bgColor: settings.bgColor,
-            scaleMultiplier: settings.scale,
-            includeLegend: false
-          });
-          setExportModalState(prev => ({ ...prev, isOpen: false }));
+          try {
+            downloadVitessceView({
+              containerRef: vitessceRef,
+              viewTitle: exportModalState.viewTitle,
+              filename: settings.filename,
+              bgColor: settings.bgColor,
+              scaleMultiplier: settings.scale,
+              includeLegend: settings.includeLegend,
+              legends: [], // Nothing needed here, exportUtils will scrape the gradient
+            });
+          } catch (err) {
+            console.error("Export Error:", err);
+            alert("Export failed. Check the console for details.");
+          }
+          setExportModalState((prev) => ({ ...prev, isOpen: false }));
         }}
       />
 
@@ -321,6 +342,7 @@ export default function SpatialCCC({ datasetConfig }) {
                 ligand={ligand}
                 receptor={receptor}
                 datasetConfig={datasetConfig}
+                layoutMode={layoutMode}
               />
             )}
           </div>

@@ -9,7 +9,7 @@ import App from "./App.jsx";
 // By intercepting canvas context creation globally, we force the pixels to stay in memory.
 const originalGetContext = HTMLCanvasElement.prototype.getContext;
 HTMLCanvasElement.prototype.getContext = function (type, options) {
-  if (type === 'webgl' || type === 'webgl2') {
+  if (type === "webgl" || type === "webgl2") {
     options = { ...(options || {}), preserveDrawingBuffer: true };
   }
   return originalGetContext.call(this, type, options);

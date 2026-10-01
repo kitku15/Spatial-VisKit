@@ -180,6 +180,35 @@ export default function DEAnalysis({ customColors = {} }) {
     }
   }, [gene1]);
 
+  const downloadFullTable = () => {
+    if (!volcanoData || !volcanoData.names) return;
+
+    const keys = Object.keys(volcanoData);
+    const cols = ["names", ...keys.filter((k) => k !== "names")];
+
+    let csvContent =
+      cols.map((c) => (c === "names" ? "Gene" : c)).join(",") + "\n";
+    const numRows = volcanoData.names.length;
+
+    for (let i = 0; i < numRows; i++) {
+      const row = cols.map((col) => volcanoData[col][i]);
+      csvContent += row.join(",") + "\n";
+    }
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    // Clean up cluster name for the filename
+    const safeName = selectedCluster
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, "_");
+    link.download = `Cluster_DE_${selectedAnnotation}_${safeName}_vs_Rest.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const clusterColorMap = useMemo(() => {
     if (
       !clusterLabels ||
@@ -308,7 +337,31 @@ export default function DEAnalysis({ customColors = {} }) {
           </select>
         </label>
 
-        <div className="ml-auto flex items-center">
+        <div className="ml-auto flex items-center gap-4">
+          <button
+            onClick={downloadFullTable}
+            disabled={!volcanoData}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Download Full Differential Expression Table (CSV)"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              ></path>
+            </svg>
+            Export Stats Table
+          </button>
+
+          <div className="border-l border-borderMain h-6 mx-1"></div>
+
           <InfoModal
             title={tabInfo.deAnalysis.title}
             content={tabInfo.deAnalysis.content}

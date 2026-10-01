@@ -88,7 +88,7 @@ export default function CellCellCommunication({
   const [exportModalState, setExportModalState] = useState({
     isOpen: false,
     defaultFilename: "chord_diagram",
-    defaultBg: "#ffffff"
+    defaultBg: "#ffffff",
   });
 
   const [cellColorMap, setCellColorMap] = useState([]);
@@ -568,29 +568,42 @@ export default function CellCellCommunication({
         <div className="flex-1 w-full flex gap-4 overflow-hidden">
           <div className="flex-1 flex flex-col min-w-0 border border-borderLight rounded relative bg-panel overflow-hidden">
             <div className="flex-1 relative flex items-center justify-center p-4 min-h-0 bg-panel group">
-              
               <ExportImageModal
                 isOpen={exportModalState.isOpen}
-                onClose={() => setExportModalState(prev => ({ ...prev, isOpen: false }))}
+                onClose={() =>
+                  setExportModalState((prev) => ({ ...prev, isOpen: false }))
+                }
                 defaultFilename={`chord_diagram_${selectedCell}`}
                 defaultBg="#ffffff"
                 allowLegend={true}
                 onExport={(settings) => {
                   // Build Cell Type Map
-                  const cellMapObj = cellColorMap.reduce((acc, c) => ({ ...acc, [c.name]: c.color }), {});
+                  const cellMapObj = cellColorMap.reduce(
+                    (acc, c) => ({ ...acc, [c.name]: c.color }),
+                    {},
+                  );
                   const legendArray = [];
-                  
+
                   // If colored by Interaction, provide BOTH legends
                   if (colorBy === "Interaction") {
                     const intxMapObj = {};
-                    activeInteractions.forEach(intx => {
+                    activeInteractions.forEach((intx) => {
                       intxMapObj[intx] = interactionColorScale(intx);
                     });
-                    
-                    legendArray.push({ title: "Interactions (Edges)", map: intxMapObj });
-                    legendArray.push({ title: "Participating Cell Types", map: cellMapObj });
+
+                    legendArray.push({
+                      title: "Interactions (Edges)",
+                      map: intxMapObj,
+                    });
+                    legendArray.push({
+                      title: "Participating Cell Types",
+                      map: cellMapObj,
+                    });
                   } else {
-                    legendArray.push({ title: `Cell Types (${colorBy} Colors)`, map: cellMapObj });
+                    legendArray.push({
+                      title: `Cell Types (${colorBy} Colors)`,
+                      map: cellMapObj,
+                    });
                   }
 
                   downloadSvgAsPng({
@@ -599,10 +612,10 @@ export default function CellCellCommunication({
                     bgColor: settings.bgColor,
                     scaleMultiplier: settings.scale,
                     includeLegend: settings.includeLegend,
-                    legends: legendArray
+                    legends: legendArray,
                   });
-                  
-                  setExportModalState(prev => ({ ...prev, isOpen: false }));
+
+                  setExportModalState((prev) => ({ ...prev, isOpen: false }));
                 }}
               />
 
@@ -611,7 +624,25 @@ export default function CellCellCommunication({
                 className="absolute top-4 left-4 z-50 flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
                 title="Export Chord Diagram"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                  ></path>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                  ></path>
+                </svg>
                 Export
               </button>
 

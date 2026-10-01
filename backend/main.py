@@ -1,6 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from typing import List
+import io
 from contextlib import asynccontextmanager
 import zarr
 import pandas as pd
@@ -99,6 +103,15 @@ async def lifespan(app: FastAPI):
                     print(f"WARNING: Failed to parse column '{col}': {col_err}")
 
             OBS_DF = pd.DataFrame(obs_dict)
+            obs_index_name = obs_group.attrs.get('_index', '_index')
+            if obs_index_name in obs_group:
+                idx_vals = obs_group[obs_index_name][:]
+                if len(idx_vals) > 0 and isinstance(idx_vals[0], bytes):
+                    idx_vals = [x.decode('utf-8') for x in idx_vals]
+                OBS_DF.index = list(idx_vals)
+            elif 'cell_id' in OBS_DF.columns:
+                OBS_DF.index = OBS_DF['cell_id'].astype(str)
+
             var_group = ZARR_STORE['var']
             index_name = var_group.attrs.get('_index', '_index')
             VAR_DF = pd.DataFrame(index=var_group[index_name][:])
@@ -354,3 +367,80 @@ def get_sankey(col_a: str, col_b: str):
     links = [{"source": node_map[row["source_node"]], "target": node_map[row["target_node"]], "value": int(row["value"])} for _, row in flows.iterrows()]
     
     return {"nodes": nodes, "links": links}
+
+# --- EXPORT ENDPOINT ---
+class ExportFilter(BaseModel):
+    column: str
+    value: str
+
+class ExportRequest(BaseModel):
+    filters: List[ExportFilter]
+    obs_columns: List[str]
+    genes: List[str]
+    lasso_cells: List[str] = []
+
+@app.post("/api/export")
+def export_data(req: ExportRequest):
+    if OBS_DF is None: raise HTTPException(status_code=500, detail="Data not loaded.")
+    
+    # 1. Filter Metadata (Boolean Mask)
+    mask = pd.Series(True, index=OBS_DF.index)
+    for f in req.filters:
+        if f.column in OBS_DF.columns:
+            mask = mask & (OBS_DF[f.column].astype(str) == f.value)
+
+    # 1b. Apply Lasso Filter (if any)
+    if len(req.lasso_cells) > 0:
+        mask = mask & OBS_DF.index.isin(req.lasso_cells)
+            
+    filtered_obs = OBS_DF[mask].copy()
+    if len(filtered_obs) == 0:
+        raise HTTPException(status_code=400, detail="No cells match the given filters.")
+        
+    # 2. Slice requested metadata columns
+    # This ensures that ONLY the requested columns remain.
+    # If req.obs_columns is empty, this safely drops all metadata columns, leaving only the Cell ID index.
+    valid_cols = [c for c in req.obs_columns if c in filtered_obs.columns]
+    filtered_obs = filtered_obs[valid_cols]
+        
+    # 3. Append Gene Expression (if requested)
+    if len(req.genes) > 0:
+        row_indices = np.where(mask)[0]
+        X_group = ZARR_STORE['X']
+        
+        for gene in req.genes:
+            if gene in VAR_DF.index:
+                gene_idx = VAR_DF.index.get_loc(gene)
+                if isinstance(gene_idx, slice): gene_idx = gene_idx.start
+                elif isinstance(gene_idx, np.ndarray): gene_idx = np.where(gene_idx)[0][0]
+                else: gene_idx = int(gene_idx)
+                
+                if isinstance(X_group, zarr.hierarchy.Group) and 'data' in X_group:
+                    encoding = X_group.attrs.get('encoding-type', '')
+                    if 'csc' in encoding:
+                        indptr = X_group['indptr']
+                        indices = X_group['indices']
+                        data = X_group['data']
+                        start, end = int(indptr[gene_idx]), int(indptr[gene_idx + 1])
+                        
+                        dense_col = np.zeros(len(OBS_DF), dtype=np.float32)
+                        if start < end:
+                            dense_col[indices[start:end]] = data[start:end]
+                        filtered_obs[f"Expr_{gene}"] = dense_col[row_indices]
+                    else:
+                        import scipy.sparse as sp
+                        sparse_mat = sp.csr_matrix((X_group['data'][:], X_group['indices'][:], X_group['indptr'][:]), shape=(len(OBS_DF), len(VAR_DF)))
+                        col_data = sparse_mat[:, gene_idx].toarray().flatten()
+                        filtered_obs[f"Expr_{gene}"] = col_data[row_indices]
+                else:
+                    col_data = X_group[:, gene_idx]
+                    filtered_obs[f"Expr_{gene}"] = col_data[row_indices]
+                    
+    # 4. Create CSV Stream in Memory
+    stream = io.StringIO()
+    filtered_obs.to_csv(stream)
+    stream.seek(0)
+    
+    response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
+    response.headers["Content-Disposition"] = "attachment; filename=spatial_export.csv"
+    return response

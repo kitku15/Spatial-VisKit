@@ -267,19 +267,23 @@ export default function SpatialStats({
       .filter(Boolean)
       .sort();
     const violinTraces = uniqueClusters.map((clusterName, i) => {
-    const clusterData = morphData.filter((d) => d.Cluster === clusterName);
-    const metricValues = clusterData
-      .map((d) => parseFloat(d[activeMorphMetric]))
-      .filter((v) => !isNaN(v));
-    return {
-      y: metricValues,
-      type: "violin",
-      name: `Cluster ${clusterName}`,
-      box: { visible: true },
-      meanline: { visible: true },
-      marker: { color: customColors[clusterName] || largeColorPalette[i % largeColorPalette.length] }, 
-    };
-  });
+      const clusterData = morphData.filter((d) => d.Cluster === clusterName);
+      const metricValues = clusterData
+        .map((d) => parseFloat(d[activeMorphMetric]))
+        .filter((v) => !isNaN(v));
+      return {
+        y: metricValues,
+        type: "violin",
+        name: `Cluster ${clusterName}`,
+        box: { visible: true },
+        meanline: { visible: true },
+        marker: {
+          color:
+            customColors[clusterName] ||
+            largeColorPalette[i % largeColorPalette.length],
+        },
+      };
+    });
 
     return (
       <div className="flex flex-col h-full gap-4">

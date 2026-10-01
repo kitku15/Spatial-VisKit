@@ -253,24 +253,37 @@ export default function VitessceTF({
       datasets: [{ uid: "hybrid-tf-dataset", files: files }],
       coordinationSpace,
       layout: [
+        // Top Left: Cell Labels Plot
         {
           component: viewComponent,
           coordinationScopes: scopesLabels,
           x: 0,
-          y: 0,
-          w: 4,
-          h: 12,
+          y: 6,
+          w: 9,
+          h: 6,
           props: { title: "Cell Labels" },
         },
+        // Top Right: TFs Search List
+        {
+          component: "featureList",
+          coordinationScopes: { obsColorEncoding: "OCE_TF" },
+          x: 9,
+          y: 0,
+          w: 3,
+          h: 6,
+          props: { title: "TFs" },
+        },
+        // Bottom Left: TF Activity Plot
         {
           component: viewComponent,
           coordinationScopes: scopesTF,
-          x: 4,
+          x: 0,
           y: 0,
-          w: 4,
-          h: 12,
+          w: 9,
+          h: 6,
           props: { title: "TF Activity" },
         },
+        // Bottom Right: Clusters List
         {
           component: "obsSets",
           coordinationScopes: {
@@ -279,20 +292,11 @@ export default function VitessceTF({
             obsColorEncoding: "OCE_LABELS",
             obsSetFilter: "OSF1",
           },
-          x: 8,
-          y: 0,
-          w: 2,
-          h: 12,
+          x: 9,
+          y: 6,
+          w: 3,
+          h: 6,
           props: { title: "Clusters" },
-        },
-        {
-          component: "featureList",
-          coordinationScopes: { obsColorEncoding: "OCE_TF" },
-          x: 10,
-          y: 0,
-          w: 2,
-          h: 12,
-          props: { title: "TFs" },
         },
       ],
     };
