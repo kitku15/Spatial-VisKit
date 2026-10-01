@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Vitessce } from "vitessce";
-import { API_BASE_URL, DATA_DIR, largeColorPalette } from "./config";
+import { API_BASE_URL, DATA_DIR, largeColorPalette } from "../../config/config";
 
 const hexToRgb = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -39,18 +39,21 @@ export default function VitessceTF({
   const zarrDir = `data/${datasetConfig?.zarr_filename}`;
   const tfZarrDir = `data/${datasetConfig?.tf_zarr_filename || tfFallback}`;
 
-  const [zarrColumns, setZarrColumns] = useState(null);
   const [obsData, setObsData] = useState(null);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/metadata`)
-      .then((res) => res.json())
-      .then((data) => setZarrColumns(data.obs_columns))
-      .catch((err) => console.warn(err));
-    fetch(`${API_BASE_URL}/api/obs`)
-      .then((res) => res.json())
-      .then(setObsData)
-      .catch((err) => console.warn(err));
+    Promise.all([
+      fetch(`${API_BASE_URL}/api/metadata`).then((res) =>
+        res.ok ? res.json() : Promise.reject(res),
+      ),
+      fetch(`${API_BASE_URL}/api/obs`).then((res) =>
+        res.ok ? res.json() : Promise.reject(res),
+      ),
+    ])
+      .then(([, obs]) => {
+        setObsData(obs);
+      })
+      .catch((err) => console.warn("Failed to load TF metadata/obs:", err));
   }, []);
 
   const internalColName = useMemo(() => {
@@ -253,24 +256,37 @@ export default function VitessceTF({
       datasets: [{ uid: "hybrid-tf-dataset", files: files }],
       coordinationSpace,
       layout: [
+        // Top Left: Cell Labels Plot
         {
           component: viewComponent,
           coordinationScopes: scopesLabels,
           x: 0,
-          y: 0,
-          w: 4,
-          h: 12,
+          y: 6,
+          w: 9,
+          h: 6,
           props: { title: "Cell Labels" },
         },
+        // Top Right: TFs Search List
+        {
+          component: "featureList",
+          coordinationScopes: { obsColorEncoding: "OCE_TF" },
+          x: 9,
+          y: 0,
+          w: 3,
+          h: 6,
+          props: { title: "TFs" },
+        },
+        // Bottom Left: TF Activity Plot
         {
           component: viewComponent,
           coordinationScopes: scopesTF,
-          x: 4,
+          x: 0,
           y: 0,
-          w: 4,
-          h: 12,
+          w: 9,
+          h: 6,
           props: { title: "TF Activity" },
         },
+        // Bottom Right: Clusters List
         {
           component: "obsSets",
           coordinationScopes: {
@@ -279,20 +295,11 @@ export default function VitessceTF({
             obsColorEncoding: "OCE_LABELS",
             obsSetFilter: "OSF1",
           },
-          x: 8,
-          y: 0,
-          w: 2,
-          h: 12,
+          x: 9,
+          y: 6,
+          w: 3,
+          h: 6,
           props: { title: "Clusters" },
-        },
-        {
-          component: "featureList",
-          coordinationScopes: { obsColorEncoding: "OCE_TF" },
-          x: 10,
-          y: 0,
-          w: 2,
-          h: 12,
-          props: { title: "TFs" },
         },
       ],
     };
@@ -305,7 +312,6 @@ export default function VitessceTF({
     embedding,
     clusterLabels,
     activeCategory,
-    zarrColumns,
     datasetConfig,
     spatialKey,
     zarrDir,

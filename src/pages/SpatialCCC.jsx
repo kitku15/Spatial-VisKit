@@ -1,8 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import VitessceSpatialCCC from "./VitessceSpatialCCC";
-import { API_BASE_URL, SPATIAL_CCC_PREFIXES } from "./config";
-import InfoModal from "./InfoModal";
-import { tabInfo } from "./infoHelper";
+import VitessceSpatialCCC from "../components/vitessce/VitessceSpatialCCC";
+import { API_BASE_URL, SPATIAL_CCC_PREFIXES } from "../config/config";
+import InfoModal from "../components/ui/InfoModal";
+import ExportImageModal, {
+  CameraIcon,
+} from "../components/ui/ExportImageModal";
+import { downloadVitessceView } from "../utils/exportUtils";
+import { tabInfo } from "../constants/infoHelper";
 
 function SearchableSelect({ options, value, onChange, placeholder }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,9 +22,10 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredOptions = useMemo(() => {
+    const query = search.toLowerCase();
+    return options.filter((opt) => opt.label.toLowerCase().includes(query));
+  }, [options, search]);
   const selectedLabel = value ? options.find((o) => o.id === value)?.label : "";
 
   return (
@@ -77,31 +82,33 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
 }
 
 export default function SpatialCCC({ datasetConfig }) {
-  // const dynamicAnnotations = useMemo(
-  //   () => datasetConfig?.dynamic_annotations || [],
-  //   [datasetConfig],
-  // );
-  // const extraObsSets = useMemo(
-  //   () => datasetConfig?.extra_obs_sets || [],
-  //   [datasetConfig],
-  // );
   const zarrDir = `data/${datasetConfig?.zarr_filename}`;
 
   const [selectedSlide, setSelectedSlide] = useState("All");
   const [selectedSample, setSelectedSample] = useState("All");
-  // const [activeCategory, setActiveCategory] = useState(
-  //   dynamicAnnotations[0]?.name || "Cell Clusters (Leiden)",
-  // );
+
+  const [layoutMode, setLayoutMode] = useState("vertical");
 
   const [hierarchy, setHierarchy] = useState({});
   const [availableSlides, setAvailableSlides] = useState(["All"]);
 
   const [availableInteractions, setAvailableInteractions] = useState([]);
   const [selectedInteraction, setSelectedInteraction] = useState("");
+  const vitessceRef = useRef(null);
+
+  const [exportModalState, setExportModalState] = useState({
+    isOpen: false,
+    viewTitle: "",
+    defaultFilename: "",
+    defaultBg: "#000000",
+  });
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/metadata`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Metadata fetch failed");
+        return res.json();
+      })
       .then((data) => {
         setHierarchy(data.hierarchy);
         const slideKeys = Object.keys(data.hierarchy);
@@ -207,35 +214,116 @@ export default function SpatialCCC({ datasetConfig }) {
           </label>
         </div>
 
-        {/* <label className="text-sm font-semibold flex flex-col gap-1 border-l border-borderMain pl-4 text-textMain">
-          <span className="text-textMuted uppercase tracking-wider text-xs">
-            Identify Target Cell Types
-          </span>
-          <select
-            className="border border-primary rounded px-2 py-1 bg-primary-light text-primary-dark font-bold outline-none cursor-pointer focus:ring-1 focus:ring-primary"
-            value={activeCategory}
-            onChange={(e) => setActiveCategory(e.target.value)}
-          >
-            {dynamicAnnotations.map((ann) => (
-              <option key={ann.name} value={ann.name}>
-                {ann.name}
-              </option>
-            ))}
-            {extraObsSets.map((s) => (
-              <option key={s.name} value={s.name}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label> */}
+        <div className="ml-auto flex items-center gap-3">
+          {isLR ? (
+            <>
+              <button
+                onClick={() =>
+                  setLayoutMode((prev) =>
+                    prev === "horizontal" ? "vertical" : "horizontal",
+                  )
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+              >
+                {layoutMode === "horizontal"
+                  ? "◫ Side-by-Side View"
+                  : "⊟ Top-Bottom View"}
+              </button>
+              <button
+                onClick={() =>
+                  setExportModalState({
+                    isOpen: true,
+                    viewTitle: `Interaction Score: ${selectedInteraction.replace("LR_", "")}`,
+                    defaultFilename: `Score_${selectedInteraction.replace("LR_", "")}`,
+                    defaultBg: "#000000",
+                  })
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+              >
+                <CameraIcon />
+                Score
+              </button>
+              <button
+                onClick={() =>
+                  setExportModalState({
+                    isOpen: true,
+                    viewTitle: `Ligand Expression: ${ligand}`,
+                    defaultFilename: `Ligand_${ligand}`,
+                    defaultBg: "#000000",
+                  })
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+              >
+                <CameraIcon />
+                Ligand
+              </button>
+              <button
+                onClick={() =>
+                  setExportModalState({
+                    isOpen: true,
+                    viewTitle: `Receptor Expression: ${receptor}`,
+                    defaultFilename: `Receptor_${receptor}`,
+                    defaultBg: "#000000",
+                  })
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+              >
+                <CameraIcon />
+                Receptor
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() =>
+                setExportModalState({
+                  isOpen: true,
+                  viewTitle: `NMF Factor Score: ${selectedInteraction.replace("CCC_", "")}`,
+                  defaultFilename: `NMF_${selectedInteraction.replace("CCC_", "")}`,
+                  defaultBg: "#000000",
+                })
+              }
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+            >
+              <CameraIcon />
+              Map
+            </button>
+          )}
 
-        <div className="ml-auto flex items-center">
+          <div className="border-l border-borderMain h-6 mx-1"></div>
+
           <InfoModal
             title={tabInfo.spatialCcc?.title}
             content={tabInfo.spatialCcc?.content}
           />
         </div>
       </div>
+
+      <ExportImageModal
+        isOpen={exportModalState.isOpen}
+        onClose={() =>
+          setExportModalState((prev) => ({ ...prev, isOpen: false }))
+        }
+        defaultFilename={exportModalState.defaultFilename}
+        defaultBg={exportModalState.defaultBg}
+        allowLegend={true}
+        onExport={(settings) => {
+          try {
+            downloadVitessceView({
+              containerRef: vitessceRef,
+              viewTitle: exportModalState.viewTitle,
+              filename: settings.filename,
+              bgColor: settings.bgColor,
+              scaleMultiplier: settings.scale,
+              includeLegend: settings.includeLegend,
+              legends: [], // Nothing needed here, exportUtils will scrape the gradient
+            });
+          } catch (err) {
+            console.error("Export Error:", err);
+            alert("Export failed. Check the console for details.");
+          }
+          setExportModalState((prev) => ({ ...prev, isOpen: false }));
+        }}
+      />
 
       <div className="flex gap-4 flex-1 min-h-0">
         <div className="w-full bg-panel border border-borderLight shadow-sm rounded flex flex-col overflow-hidden relative z-10">
@@ -247,7 +335,7 @@ export default function SpatialCCC({ datasetConfig }) {
               Maps for {isLR ? "Ligand-Receptor pairs" : "NMF factors"}
             </span>
           </div>
-          <div className="flex-1 relative">
+          <div className="flex-1 relative" ref={vitessceRef}>
             {!selectedInteraction ? (
               <div className="flex items-center justify-center h-full text-textMuted">
                 No LIANA Spatial CCC data found in Zarr store.
@@ -260,6 +348,7 @@ export default function SpatialCCC({ datasetConfig }) {
                 ligand={ligand}
                 receptor={receptor}
                 datasetConfig={datasetConfig}
+                layoutMode={layoutMode}
               />
             )}
           </div>

@@ -7,9 +7,9 @@ import {
   themeColors,
   DATA_DIR,
   API_BASE_URL,
-} from "./config";
-import InfoModal from "./InfoModal";
-import { tabInfo } from "./infoHelper";
+} from "../config/config";
+import InfoModal from "../components/ui/InfoModal";
+import { tabInfo } from "../constants/infoHelper";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -29,9 +29,10 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter((opt) =>
-    opt.original.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredOptions = useMemo(() => {
+    const query = search.toLowerCase();
+    return options.filter((opt) => opt.original.toLowerCase().includes(query));
+  }, [options, search]);
 
   return (
     <div ref={wrapperRef} className="relative flex-1 max-w-[200px]">
@@ -102,18 +103,27 @@ export default function DEAnalysis({ customColors = {} }) {
 
   useEffect(() => {
     async function initData() {
-      const meta = await fetch(
-        `${API_BASE_URL}/${DATA_DIR}/de_analysis/de_metadata.json`,
-      ).then((r) => r.json());
-      const annos = Object.keys(meta);
-      setAnnotations(annos);
-      if (annos.length > 0) setSelectedAnnotation(annos[0]);
-      fetch(`${API_BASE_URL}/api/obs`)
-        .then((r) => r.json())
-        .then(setClusterLabels);
-      fetch(`${API_BASE_URL}/api/genes`)
-        .then((r) => r.json())
-        .then(setAvailableGenes);
+      try {
+        const metaRes = await fetch(
+          `${API_BASE_URL}/${DATA_DIR}/de_analysis/de_metadata.json`,
+        );
+        if (!metaRes.ok) throw new Error("Metadata fetch failed");
+        const meta = await metaRes.json();
+
+        const annos = Object.keys(meta);
+        setAnnotations(annos);
+        if (annos.length > 0) setSelectedAnnotation(annos[0]);
+
+        const [obsRes, genesRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/obs`),
+          fetch(`${API_BASE_URL}/api/genes`),
+        ]);
+
+        if (obsRes.ok) setClusterLabels(await obsRes.json());
+        if (genesRes.ok) setAvailableGenes(await genesRes.json());
+      } catch (err) {
+        console.error("Failed to initialize DE Analysis data:", err);
+      }
     }
     initData();
   }, []);
@@ -164,10 +174,14 @@ export default function DEAnalysis({ customColors = {} }) {
     const safeCluster = selectedCluster
       .replace(/[^\w\s-]/g, "")
       .replace(/\s+/g, "_");
+
     fetch(
       `${API_BASE_URL}/${DATA_DIR}/de_analysis/${selectedAnnotation}_cluster_${safeCluster}.json`,
     )
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Volcano data not found");
+        return r.json();
+      })
       .then(setVolcanoData)
       .catch(() => setVolcanoData(null));
   }, [selectedAnnotation, selectedCluster]);
@@ -175,10 +189,43 @@ export default function DEAnalysis({ customColors = {} }) {
   useEffect(() => {
     if (gene1) {
       fetch(`${API_BASE_URL}/api/expression/${encodeURIComponent(gene1.safe)}`)
-        .then((r) => r.json())
-        .then((data) => setExpr1(data[gene1.safe]));
+        .then((r) => {
+          if (!r.ok) throw new Error("Expression data fetch failed");
+          return r.json();
+        })
+        .then((data) => setExpr1(data[gene1.safe]))
+        .catch((err) => console.error(err));
     }
   }, [gene1]);
+
+  const downloadFullTable = () => {
+    if (!volcanoData || !volcanoData.names) return;
+
+    const keys = Object.keys(volcanoData);
+    const cols = ["names", ...keys.filter((k) => k !== "names")];
+
+    let csvContent =
+      cols.map((c) => (c === "names" ? "Gene" : c)).join(",") + "\n";
+    const numRows = volcanoData.names.length;
+
+    for (let i = 0; i < numRows; i++) {
+      const row = cols.map((col) => volcanoData[col][i]);
+      csvContent += row.join(",") + "\n";
+    }
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    // Clean up cluster name for the filename
+    const safeName = selectedCluster
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, "_");
+    link.download = `Cluster_DE_${selectedAnnotation}_${safeName}_vs_Rest.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const clusterColorMap = useMemo(() => {
     if (
@@ -308,7 +355,31 @@ export default function DEAnalysis({ customColors = {} }) {
           </select>
         </label>
 
-        <div className="ml-auto flex items-center">
+        <div className="ml-auto flex items-center gap-4">
+          <button
+            onClick={downloadFullTable}
+            disabled={!volcanoData}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Download Full Differential Expression Table (CSV)"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              ></path>
+            </svg>
+            Export Stats Table
+          </button>
+
+          <div className="border-l border-borderMain h-6 mx-1"></div>
+
           <InfoModal
             title={tabInfo.deAnalysis.title}
             content={tabInfo.deAnalysis.content}

@@ -1,11 +1,10 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 
 export default function InfoModal({ title, content }) {
   const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef(null);
 
   return (
-    <div className="relative inline-block" ref={containerRef}>
+    <div className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors shadow-sm border z-10 relative

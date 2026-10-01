@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
-import { themeColors, largeColorPalette, API_BASE_URL } from "./config";
-import InfoModal from "./InfoModal";
-import { tabInfo } from "./infoHelper";
+import { themeColors, largeColorPalette, API_BASE_URL } from "../config/config";
+import InfoModal from "../components/ui/InfoModal";
+import { tabInfo } from "../constants/infoHelper";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -22,7 +22,10 @@ export default function CompositionAnalysis({ customColors = {} }) {
   // Fetch the data
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/obs`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         setObsData(data);
         const cols = Object.keys(data).sort();

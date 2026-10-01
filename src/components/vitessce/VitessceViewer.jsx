@@ -2,14 +2,17 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Vitessce } from "vitessce";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
+
+import { downloadVitessceView } from "../../utils/exportUtils";
+import ExportImageModal, { CameraIcon } from "../ui/ExportImageModal";
+import InfoModal from "../ui/InfoModal";
+import { tabInfo } from "../../constants/infoHelper";
 import {
   API_BASE_URL,
   DATA_DIR,
   largeColorPalette,
   themeColors,
-} from "./config";
-import InfoModal from "./InfoModal";
-import { tabInfo } from "./infoHelper";
+} from "../../config/config";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -31,7 +34,6 @@ export default function VitessceViewer({
   globalUpdateSignal,
   setHasUnappliedChildChanges,
 }) {
-  // Memoize dataset config values to satisfy exhaustive dependencies
   const dynamicAnnotations = useMemo(
     () =>
       datasetConfig?.dynamic_annotations || [
@@ -63,11 +65,18 @@ export default function VitessceViewer({
   const [availableSlides, setAvailableSlides] = useState(["All"]);
 
   const [compositionData, setCompositionData] = useState(null);
-  const [zarrColumns, setZarrColumns] = useState(null);
   const [hoveredSlice, setHoveredSlice] = useState(null);
   const [clickedSlice, setClickedSlice] = useState(null);
 
-  // Derive available samples based on selectedSlide and hierarchy
+  const vitessceRef = useRef(null);
+
+  const [exportModalState, setExportModalState] = useState({
+    isOpen: false,
+    viewTitle: "",
+    defaultFilename: "",
+    defaultBg: "#ffffff",
+  });
+
   const availableSamples = useMemo(() => {
     if (Object.keys(hierarchy).length === 0) return ["All"];
     if (selectedSlide === "All") {
@@ -76,25 +85,20 @@ export default function VitessceViewer({
     return Array.from(new Set(["All", ...(hierarchy[selectedSlide] || [])]));
   }, [selectedSlide, hierarchy]);
 
-  // Adjust clicked slice during render if n or r changes (no effect required)
   const [prevFilterKey, setPrevFilterKey] = useState(`${n}-${r}`);
   const currentFilterKey = `${n}-${r}`;
   if (currentFilterKey !== prevFilterKey) {
     setPrevFilterKey(currentFilterKey);
     setClickedSlice(null);
   }
-  // Notify parent if local dropdowns don't match the applied filters
+
   useEffect(() => {
     if (!setHasUnappliedChildChanges) return;
-
     const isDirty =
       selectedSlide !== appliedFilters.slide ||
       selectedSample !== appliedFilters.sample ||
       activeCategory !== appliedFilters.category;
-
     setHasUnappliedChildChanges(isDirty);
-
-    // Clean up when leaving the tab so the button resets
     return () => setHasUnappliedChildChanges(false);
   }, [
     selectedSlide,
@@ -114,7 +118,6 @@ export default function VitessceViewer({
   }, [selectedSlide, selectedSample, activeCategory]);
 
   const prevSignalRef = useRef(globalUpdateSignal);
-
   useEffect(() => {
     if (globalUpdateSignal > prevSignalRef.current) {
       handleApplyFilters();
@@ -129,8 +132,6 @@ export default function VitessceViewer({
         if (res.ok) {
           const data = await res.json();
           setHierarchy(data.hierarchy);
-          setZarrColumns(data.obs_columns);
-
           const slides = Object.keys(data.hierarchy);
           setAvailableSlides(
             slides.includes("All") ? slides : ["All", ...slides],
@@ -146,15 +147,11 @@ export default function VitessceViewer({
                     Math.floor(Math.random() * samplesInSlide.length)
                   ]
                 : "All";
-
             setSelectedSlide(randomSlide);
             setSelectedSample(randomSample);
-
             const initialCategory =
               dynamicAnnotations[0]?.name || extraObsSets[0]?.name || "Unknown";
-
-            setActiveCategory(initialCategory); // Ensure dropdown syncs visually
-
+            setActiveCategory(initialCategory);
             setAppliedFilters({
               slide: randomSlide,
               sample: randomSample,
@@ -212,7 +209,6 @@ export default function VitessceViewer({
     if (!currentDataCounts) return null;
     const labels = Object.keys(currentDataCounts);
     const values = Object.values(currentDataCounts);
-
     const colors = labels.map((label) => {
       if (hoveredSlice)
         return label === hoveredSlice
@@ -286,9 +282,7 @@ export default function VitessceViewer({
       obsSetColor: { OSC1: obsSetColor },
       featureValueColormap: { CVM1: "viridis" },
 
-      spatialPointLayer: {
-        SPL1: { visible: true, opacity: 0, radius: 0 },
-      },
+      spatialPointLayer: { SPL1: { visible: true, opacity: 0, radius: 0 } },
       spatialSegmentationLayer: {
         SSL1: {
           visible: true,
@@ -310,6 +304,7 @@ export default function VitessceViewer({
               : null,
       },
       obsColorEncoding: { OCE1: "cellSetSelection" },
+      obsSelection: { OBS_SEL: [] },
     };
 
     const umapScopes = {
@@ -322,6 +317,7 @@ export default function VitessceViewer({
       obsColorEncoding: "OCE1",
       featureSelection: "FS1",
       featureValueColormap: "CVM1",
+      obsSelection: "OBS_SEL",
     };
 
     const spatialScatterplotScopes = {
@@ -337,6 +333,7 @@ export default function VitessceViewer({
       obsColorEncoding: "OCE1",
       featureSelection: "FS1",
       featureValueColormap: "CVM1",
+      obsSelection: "OBS_SEL",
     };
 
     const spatialScopes = {
@@ -348,6 +345,7 @@ export default function VitessceViewer({
       obsColorEncoding: "OCE1",
       featureSelection: "FS1",
       featureValueColormap: "CVM1",
+      obsSelection: "OBS_SEL",
     };
 
     const obsSetsScopes = {
@@ -383,7 +381,6 @@ export default function VitessceViewer({
       },
     ];
 
-    // Only inject segmentation files if they actually exist
     if (hasSegmentations) {
       files.push({
         fileType: "obsSegmentations.json",
@@ -398,7 +395,6 @@ export default function VitessceViewer({
       });
     }
 
-    // Build the dynamic layout
     const layout = [
       {
         component: "scatterplot",
@@ -450,7 +446,6 @@ export default function VitessceViewer({
         h: 9,
       });
     } else {
-      // Substitute the Spatial Viewer with a Scatterplot Viewer
       layout.push({
         component: "scatterplot",
         coordinationScopes: spatialScatterplotScopes,
@@ -460,7 +455,6 @@ export default function VitessceViewer({
         h: 12,
         props: { title: "Spatial (Coordinates)" },
       });
-      // Expand the right side menus since LayerController is no longer needed
       layout.push({
         component: "obsSets",
         coordinationScopes: obsSetsScopes,
@@ -497,7 +491,7 @@ export default function VitessceViewer({
     clickedSlice,
     colorMap,
     embedding,
-    zarrColumns,
+    activeCategory,
     dotSize,
     dynamicAnnotations,
     extraObsSets,
@@ -513,7 +507,6 @@ export default function VitessceViewer({
         <span className="font-bold text-sm text-textMain uppercase tracking-wide">
           Spatial Filters:
         </span>
-
         <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
           Slide:
           <select
@@ -528,7 +521,6 @@ export default function VitessceViewer({
             ))}
           </select>
         </label>
-
         <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
           Sample:
           <select
@@ -544,7 +536,6 @@ export default function VitessceViewer({
             ))}
           </select>
         </label>
-
         <label className="text-sm font-semibold flex items-center gap-2 border-l border-borderMain pl-6 text-textMain">
           Color By:
           <select
@@ -564,8 +555,38 @@ export default function VitessceViewer({
             ))}
           </select>
         </label>
-
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-3">
+          <button
+            onClick={() =>
+              setExportModalState({
+                isOpen: true,
+                viewTitle: "UMAP",
+                defaultFilename: `UMAP_${appliedFilters.sample || appliedFilters.slide}`,
+                defaultBg: "#ffffff",
+              })
+            }
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+          >
+            <CameraIcon />
+            UMAP
+          </button>
+          <button
+            onClick={() =>
+              setExportModalState({
+                isOpen: true,
+                viewTitle: datasetConfig?.has_segmentations
+                  ? "Spatial (Segmentations)"
+                  : "Spatial (Coordinates)",
+                defaultFilename: `Spatial_${appliedFilters.sample || appliedFilters.slide}`,
+                defaultBg: "#000000",
+              })
+            }
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+          >
+            <CameraIcon />
+            Spatial
+          </button>
+          <div className="border-l border-borderMain h-6 mx-1"></div>
           <InfoModal
             title={tabInfo.interactive.title}
             content={tabInfo.interactive.content}
@@ -573,7 +594,10 @@ export default function VitessceViewer({
         </div>
       </div>
 
-      <div className="flex-1 w-full h-full min-h-0 relative overflow-hidden">
+      <div
+        ref={vitessceRef}
+        className="flex-1 w-full h-full min-h-0 relative overflow-hidden"
+      >
         {appliedFilters.slide && compositionData ? (
           <Vitessce
             key={`vitessce-${n}-${r}-${appliedFilters.category}-${appliedFilters.slide}-${appliedFilters.sample}`}
@@ -585,6 +609,34 @@ export default function VitessceViewer({
             Loading spatial data...
           </div>
         )}
+
+        <ExportImageModal
+          isOpen={exportModalState.isOpen}
+          onClose={() =>
+            setExportModalState((prev) => ({ ...prev, isOpen: false }))
+          }
+          defaultFilename={exportModalState.defaultFilename}
+          defaultBg={exportModalState.defaultBg}
+          onExport={(settings) => {
+            try {
+              downloadVitessceView({
+                containerRef: vitessceRef,
+                viewTitle: exportModalState.viewTitle,
+                filename: settings.filename,
+                bgColor: settings.bgColor,
+                scaleMultiplier: settings.scale,
+                includeLegend: settings.includeLegend,
+                // Provide the categorical map; exportUtils will automatically ignore
+                // this if it finds a gradient image actively displayed on the screen!
+                legends: [{ title: appliedFilters.category, map: colorMap }],
+              });
+            } catch (err) {
+              console.error("Export Error:", err);
+              alert("Export failed. Check the console for details.");
+            }
+            setExportModalState((prev) => ({ ...prev, isOpen: false }));
+          }}
+        />
 
         <div className="absolute bottom-0 right-0 w-1/3 h-[50%] bg-panel z-10 border-t border-l border-borderLight p-3 flex flex-col shadow-[-4px_-4px_8px_-1px_rgba(0,0,0,0.05)]">
           <div className="flex justify-between items-center mb-2 pb-2 border-b border-borderLight">
@@ -601,7 +653,6 @@ export default function VitessceViewer({
               </button>
             )}
           </div>
-
           <div className="flex-1 min-h-0 relative">
             {pieChartData ? (
               <Plot
@@ -613,6 +664,13 @@ export default function VitessceViewer({
                   paper_bgcolor: themeColors.paper,
                   plot_bgcolor: themeColors.paper,
                   font: { color: themeColors.label },
+                }}
+                config={{
+                  displayModeBar: true,
+                  toImageButtonOptions: {
+                    format: "svg",
+                    filename: `composition_${appliedFilters.slide}_${appliedFilters.sample}`,
+                  },
                 }}
                 useResizeHandler={true}
                 style={{ width: "100%", height: "100%" }}

@@ -2,9 +2,9 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
-import InfoModal from "./InfoModal";
-import { tabInfo } from "./infoHelper";
-import { themeColors, DATA_DIR, API_BASE_URL } from "./config";
+import InfoModal from "../components/ui/InfoModal";
+import { tabInfo } from "../constants/infoHelper";
+import { themeColors, DATA_DIR, API_BASE_URL } from "../config/config";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -24,9 +24,10 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter((opt) =>
-    opt.original.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredOptions = useMemo(() => {
+    const query = search.toLowerCase();
+    return options.filter((opt) => opt.original.toLowerCase().includes(query));
+  }, [options, search]);
 
   return (
     <div ref={wrapperRef} className="relative flex-1 max-w-[250px]">
@@ -100,15 +101,21 @@ export default function ConditionsDE() {
   useEffect(() => {
     async function initData() {
       try {
-        const meta = await fetch(
-          `${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/conditions_de_metadata.json`,
-        ).then((r) => r.json());
-        const genes = await fetch(`${API_BASE_URL}/api/genes`).then((r) =>
-          r.json(),
-        );
-        const clusters = await fetch(`${API_BASE_URL}/api/obs`).then((r) =>
-          r.json(),
-        );
+        const [metaRes, genesRes, clustersRes] = await Promise.all([
+          fetch(
+            `${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/conditions_de_metadata.json`,
+          ),
+          fetch(`${API_BASE_URL}/api/genes`),
+          fetch(`${API_BASE_URL}/api/obs`),
+        ]);
+
+        if (!metaRes.ok || !genesRes.ok || !clustersRes.ok) {
+          throw new Error("One or more API requests failed.");
+        }
+
+        const meta = await metaRes.json();
+        const genes = await genesRes.json();
+        const clusters = await clustersRes.json();
 
         setConfig(meta.config);
         setComparisonsMap(meta.comparisons);
@@ -135,7 +142,10 @@ export default function ConditionsDE() {
     fetch(
       `${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/${selectedCellType}_comparison_${selectedComparison}.json`,
     )
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error("Volcano data fetch failed");
+        return r.json();
+      })
       .then(setVolcanoData)
       .catch(() => setVolcanoData(null));
 
@@ -183,10 +193,14 @@ export default function ConditionsDE() {
     panelGenes.forEach((g) => {
       if (g && !geneExpressions[g.safe]) {
         fetch(`${API_BASE_URL}/api/expression/${encodeURIComponent(g.safe)}`)
-          .then((r) => r.json())
+          .then((r) => {
+            if (!r.ok) throw new Error("Expression fetch failed");
+            return r.json();
+          })
           .then((data) => {
             setGeneExpressions((prev) => ({ ...prev, ...data }));
-          });
+          })
+          .catch((err) => console.error(err));
       }
     });
   }, [panelGenes, geneExpressions]);
@@ -200,6 +214,34 @@ export default function ConditionsDE() {
   const [testCond, refCond] = selectedComparison
     ? selectedComparison.split("_vs_")
     : ["Test", "Ref"];
+
+  const downloadFullTable = () => {
+    if (!volcanoData || !volcanoData.names) return;
+
+    // Dynamically grab all columns (names, logfc, pvals, scores, etc.)
+    const keys = Object.keys(volcanoData);
+    const cols = ["names", ...keys.filter((k) => k !== "names")]; // Ensure 'names' (Gene) is first
+
+    // Build CSV string
+    let csvContent =
+      cols.map((c) => (c === "names" ? "Gene" : c)).join(",") + "\n";
+    const numRows = volcanoData.names.length;
+
+    for (let i = 0; i < numRows; i++) {
+      const row = cols.map((col) => volcanoData[col][i]);
+      csvContent += row.join(",") + "\n";
+    }
+
+    // Trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Conditions_DE_${selectedCellType}_${selectedComparison}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const volcanoPlot = useMemo(() => {
     if (!volcanoData) return null;
@@ -395,6 +437,30 @@ export default function ConditionsDE() {
             />
             Hide Zero-Expression Cells
           </label>
+
+          <div className="border-l border-borderMain h-6 mx-1"></div>
+
+          <button
+            onClick={downloadFullTable}
+            disabled={!volcanoData}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Download Full Differential Expression Table (CSV)"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+              ></path>
+            </svg>
+            Export Stats Table
+          </button>
 
           <InfoModal
             title={tabInfo.conditionsDe.title}

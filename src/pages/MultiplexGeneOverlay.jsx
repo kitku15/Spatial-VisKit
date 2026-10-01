@@ -5,9 +5,9 @@ import {
   channelColorMap,
   defaultChannelColorNames,
   API_BASE_URL,
-} from "./config";
-import InfoModal from "./InfoModal";
-import { tabInfo } from "./infoHelper";
+} from "../config/config";
+import InfoModal from "../components/ui/InfoModal";
+import { tabInfo } from "../constants/infoHelper";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -28,9 +28,10 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredOptions = options.filter((opt) =>
-    opt.original.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filteredOptions = useMemo(() => {
+    const query = search.toLowerCase();
+    return options.filter((opt) => opt.original.toLowerCase().includes(query));
+  }, [options, search]);
 
   return (
     <div ref={wrapperRef} className="relative flex-1 min-w-0">
@@ -112,9 +113,14 @@ export default function MultiplexGeneOverlay() {
           fetch(`${API_BASE_URL}/api/locations`),
         ]);
 
-        const metaData = metaRes
-          ? await metaRes.json()
-          : { hierarchy: { All: ["All"] } };
+        if (!geneRes.ok || !locRes.ok) {
+          throw new Error("Failed to fetch essential multiplex data.");
+        }
+
+        const metaData =
+          metaRes && metaRes.ok
+            ? await metaRes.json()
+            : { hierarchy: { All: ["All"] } };
         const geneList = await geneRes.json();
         const locations = await locRes.json();
 
@@ -177,7 +183,10 @@ export default function MultiplexGeneOverlay() {
         fetch(
           `${API_BASE_URL}/api/expression/${encodeURIComponent(ch.gene.safe)}`,
         )
-          .then((r) => r.json())
+          .then((r) => {
+            if (!r.ok) throw new Error("Expression fetch failed");
+            return r.json();
+          })
           .then((data) => {
             setExprData((prev) => ({ ...prev, ...data }));
           })

@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
-import VitessceTF from "./VitessceTF";
-import { API_BASE_URL, DATA_DIR, themeColors } from "./config";
-import InfoModal from "./InfoModal";
-import { tabInfo } from "./infoHelper";
+import VitessceTF from "../components/vitessce/VitessceTF";
+import { API_BASE_URL, DATA_DIR, themeColors } from "../config/config";
+import InfoModal from "../components/ui/InfoModal";
+import { tabInfo } from "../constants/infoHelper";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;

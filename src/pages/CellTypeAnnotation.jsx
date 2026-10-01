@@ -1,9 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
-import InfoModal from "./InfoModal";
-import { tabInfo } from "./infoHelper";
-import { annotationColorPalette, themeColors, API_BASE_URL } from "./config";
+import InfoModal from "../components/ui/InfoModal";
+import { tabInfo } from "../constants/infoHelper";
+import {
+  annotationColorPalette,
+  themeColors,
+  API_BASE_URL,
+} from "../config/config";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -22,7 +26,10 @@ export default function CellTypeAnnotation({ datasetConfig }) {
   // Fetch all categorical columns just like CompositionAnalysis
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/obs`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch obs data");
+        return res.json();
+      })
       .then((data) => {
         setAvailableCols(Object.keys(data).sort());
       })

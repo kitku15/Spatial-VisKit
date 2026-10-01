@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
-import InfoModal from "./InfoModal";
-import { tabInfo } from "./infoHelper";
-import { themeColors, DATA_DIR, API_BASE_URL } from "./config";
+import InfoModal from "../components/ui/InfoModal";
+import { tabInfo } from "../constants/infoHelper";
+import { themeColors, DATA_DIR, API_BASE_URL } from "../config/config";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;

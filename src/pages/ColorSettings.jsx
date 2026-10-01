@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { largeColorPalette, API_BASE_URL } from "./config";
+import { largeColorPalette, API_BASE_URL } from "../config/config";
 
 // Maximum number of unique categories to render color pickers for.
 // Anything above this is likely continuous data or cell barcodes.
@@ -12,15 +12,19 @@ export default function ColorSettings({ customColors, setCustomColors }) {
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/obs`)
-      // fetch(`/${DATA_DIR}/cell_clusters.json`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         setObsData(data);
         const cols = Object.keys(data).sort();
         setAvailableCols(cols);
         if (cols.length > 0) setSelectedCol(cols[0]);
       })
-      .catch((err) => console.error("Could not load cell_clusters.json", err));
+      .catch((err) =>
+        console.error("Could not load observable metadata:", err),
+      );
   }, []);
 
   const uniqueLabels = useMemo(() => {

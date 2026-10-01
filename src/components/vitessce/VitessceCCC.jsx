@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Vitessce } from "vitessce";
-import { API_BASE_URL, DATA_DIR } from "./config";
+import { API_BASE_URL, DATA_DIR } from "../../config/config";
 
 const hexToRgb = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);

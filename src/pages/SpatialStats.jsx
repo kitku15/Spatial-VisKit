@@ -8,10 +8,10 @@ import {
   DATA_DIR,
   DEFAULT_MORPH_METRIC,
   API_BASE_URL,
-} from "./config";
-import VitessceSpatialStats from "./VitessceSpatialStats";
-import InfoModal from "./InfoModal";
-import { tabInfo } from "./infoHelper";
+} from "../config/config";
+import VitessceSpatialStats from "../components/vitessce/VitessceSpatialStats";
+import InfoModal from "../components/ui/InfoModal";
+import { tabInfo } from "../constants/infoHelper";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -267,19 +267,23 @@ export default function SpatialStats({
       .filter(Boolean)
       .sort();
     const violinTraces = uniqueClusters.map((clusterName, i) => {
-    const clusterData = morphData.filter((d) => d.Cluster === clusterName);
-    const metricValues = clusterData
-      .map((d) => parseFloat(d[activeMorphMetric]))
-      .filter((v) => !isNaN(v));
-    return {
-      y: metricValues,
-      type: "violin",
-      name: `Cluster ${clusterName}`,
-      box: { visible: true },
-      meanline: { visible: true },
-      marker: { color: customColors[clusterName] || largeColorPalette[i % largeColorPalette.length] }, 
-    };
-  });
+      const clusterData = morphData.filter((d) => d.Cluster === clusterName);
+      const metricValues = clusterData
+        .map((d) => parseFloat(d[activeMorphMetric]))
+        .filter((v) => !isNaN(v));
+      return {
+        y: metricValues,
+        type: "violin",
+        name: `Cluster ${clusterName}`,
+        box: { visible: true },
+        meanline: { visible: true },
+        marker: {
+          color:
+            customColors[clusterName] ||
+            largeColorPalette[i % largeColorPalette.length],
+        },
+      };
+    });
 
     return (
       <div className="flex flex-col h-full gap-4">
@@ -346,16 +350,22 @@ export default function SpatialStats({
         </div>
       );
     const centralityTraces = centralityData
-      ? Object.keys(centralityData).map((cluster) => ({
-          x: ["Degree", "Closeness"],
-          y: [
-            centralityData[cluster]["degree_centrality"],
-            centralityData[cluster]["closeness_centrality"],
-          ],
-          name: `Cluster ${cluster}`,
-          type: "bar",
-          marker: { color: customColors[cluster] || themeColors.primary },
-        }))
+      ? Object.keys(centralityData)
+          .sort()
+          .map((cluster, i) => ({
+            x: ["Degree", "Closeness"],
+            y: [
+              centralityData[cluster]["degree_centrality"],
+              centralityData[cluster]["closeness_centrality"],
+            ],
+            name: `Cluster ${cluster}`,
+            type: "bar",
+            marker: {
+              color:
+                customColors[cluster] ||
+                largeColorPalette[i % largeColorPalette.length],
+            },
+          }))
       : [];
 
     const moranTraces = moranData
