@@ -152,6 +152,7 @@ Visualize PyDEseq2 results on pairwise comparisons (e.g., Healthy vs. Disease) _
 
 <details>
 <summary>Gene Set Enrichment Analysis (GSEA)</summary>
+<img src="assets/GSEA.png" alt="Logo" width="600">
 
 Perform fast Gene Set Enrichment Analysis (fGSEA) to identify altered biological pathways across your experimental conditions.
 
