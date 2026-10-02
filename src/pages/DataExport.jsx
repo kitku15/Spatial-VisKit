@@ -193,7 +193,7 @@ export default function DataExport() {
             </div>
           ) : (
             <div>
-              <label className="cursor-pointer inline-block px-4 py-2 bg-primary-light text-primary-dark border border-primary rounded text-sm font-bold hover:bg-primary hover:text-textInverse transition shadow-sm">
+              <label className="cursor-pointer inline-flex items-center justify-center px-4 h-9 bg-primary-light text-primary-dark border border-primary rounded text-sm font-bold hover:bg-primary hover:text-textInverse transition shadow-sm">
                 Upload Vitessce Export (.csv)
                 <input
                   type="file"
@@ -228,7 +228,7 @@ export default function DataExport() {
                 className="flex gap-3 items-center bg-app p-2 border border-borderMain rounded"
               >
                 <select
-                  className="border border-borderMain p-2 rounded text-sm w-1/3 outline-none"
+                  className="border border-borderMain px-3 h-9 rounded text-sm w-1/3 outline-none"
                   value={f.column}
                   onChange={(e) => updateFilter(i, "column", e.target.value)}
                 >
@@ -240,7 +240,7 @@ export default function DataExport() {
                 </select>
                 <span className="font-bold text-textMuted text-sm">==</span>
                 <select
-                  className="border border-borderMain p-2 rounded text-sm w-1/3 outline-none"
+                  className="border border-borderMain px-3 h-9 rounded text-sm w-1/3 outline-none"
                   value={f.value}
                   onChange={(e) => updateFilter(i, "value", e.target.value)}
                 >
@@ -265,7 +265,7 @@ export default function DataExport() {
           <button
             onClick={addFilter}
             disabled={columns.length === 0}
-            className="px-4 py-2 bg-borderLight border border-borderMain rounded text-sm font-bold text-textMain hover:bg-borderMain transition disabled:opacity-50"
+            className="px-4 h-9 flex items-center justify-center w-max bg-borderLight border border-borderMain rounded text-sm font-bold text-textMain hover:bg-borderMain transition disabled:opacity-50"
           >
             + Add Filter Rule
           </button>
@@ -333,7 +333,7 @@ export default function DataExport() {
             {selectedGenes.length > 0 && (
               <button
                 onClick={() => setSelectedGenes([])}
-                className="text-xs font-bold bg-danger-light text-danger-dark border border-danger-light px-2 py-1 rounded hover:bg-danger hover:text-textInverse transition"
+                className="text-xs font-bold bg-danger-light text-danger-dark border border-danger-light px-3 h-8 flex items-center justify-center rounded hover:bg-danger hover:text-textInverse transition"
               >
                 Clear All Genes
               </button>
@@ -361,7 +361,7 @@ export default function DataExport() {
               <button
                 onClick={handleBulkGenes}
                 disabled={!bulkGeneInput.trim()}
-                className="bg-borderDark text-textInverse font-bold text-sm py-2 rounded hover:bg-textMain transition disabled:opacity-50"
+                className="bg-borderDark text-textInverse font-bold text-sm h-9 flex items-center justify-center rounded hover:bg-textMain transition disabled:opacity-50"
               >
                 Add Parsed Genes
               </button>

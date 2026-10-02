@@ -126,15 +126,15 @@ export default function CompositionAnalysis({ customColors = {} }) {
   return (
     <div className="p-6 flex flex-col gap-6 h-full bg-app overflow-y-auto">
       {/* Settings Panel */}
-      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-6 items-center">
+      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-6 items-end">
         {/* Step 1: Filter */}
-        <div className="flex gap-2 p-2 border border-borderMain bg-borderLight rounded">
+        <div className="flex gap-3 p-2 border border-borderMain bg-borderLight rounded">
           <label className="text-sm font-semibold flex flex-col gap-1">
             <span className="text-textMuted uppercase tracking-wide text-xs">
               Filter By (Col A)
             </span>
             <select
-              className="border border-borderMain p-2 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
+              className="border border-borderMain px-3 h-9 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
               value={filterCol}
               onChange={(e) => setFilterCol(e.target.value)}
             >
@@ -153,7 +153,7 @@ export default function CompositionAnalysis({ customColors = {} }) {
                 Filter Category
               </span>
               <select
-                className="border border-primary bg-primary-light text-primary-dark p-2 rounded outline-none w-48 focus:ring-1 focus:ring-primary"
+                className="border border-primary bg-primary-light text-primary-dark px-3 h-9 rounded outline-none w-48 focus:ring-1 focus:ring-primary"
                 value={effectiveFilterVal}
                 onChange={(e) => setFilterVal(e.target.value)}
               >
@@ -173,7 +173,7 @@ export default function CompositionAnalysis({ customColors = {} }) {
             X-Axis Group (Col C)
           </span>
           <select
-            className="border border-borderMain p-2 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
+            className="border border-borderMain px-3 h-9 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
             value={xaxisCol}
             onChange={(e) => setXaxisCol(e.target.value)}
           >
@@ -191,7 +191,7 @@ export default function CompositionAnalysis({ customColors = {} }) {
             Breakdown/Colors (Col B)
           </span>
           <select
-            className="border border-borderMain p-2 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
+            className="border border-borderMain px-3 h-9 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
             value={breakdownCol}
             onChange={(e) => setBreakdownCol(e.target.value)}
           >
@@ -203,7 +203,7 @@ export default function CompositionAnalysis({ customColors = {} }) {
           </select>
         </label>
 
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center h-9">
           <InfoModal
             title={tabInfo.composition.title}
             content={tabInfo.composition.content}

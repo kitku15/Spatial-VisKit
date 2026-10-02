@@ -31,7 +31,7 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
   return (
     <div ref={wrapperRef} className="relative flex-1 w-72 max-w-full">
       <div
-        className="border border-primary bg-primary-light text-primary-dark p-1.5 rounded flex items-center justify-between cursor-text"
+        className="border border-primary bg-primary-light text-primary-dark px-3 h-9 rounded flex items-center justify-between cursor-text"
         onClick={() => setIsOpen(true)}
       >
         <input
@@ -184,7 +184,7 @@ export default function SpatialCCC({ datasetConfig }) {
               Slide
             </span>
             <select
-              className="border border-borderMain rounded px-2 py-1 bg-panel font-normal outline-none focus:border-primary"
+              className="border border-borderMain rounded px-3 h-9 bg-panel font-normal outline-none focus:border-primary"
               value={selectedSlide}
               onChange={handleSlideChange}
             >
@@ -200,7 +200,7 @@ export default function SpatialCCC({ datasetConfig }) {
               Sample
             </span>
             <select
-              className="border border-borderMain rounded px-2 py-1 bg-panel font-normal disabled:opacity-50 outline-none focus:border-primary"
+              className="border border-borderMain rounded px-3 h-9 bg-panel font-normal disabled:opacity-50 outline-none focus:border-primary"
               value={selectedSample}
               onChange={(e) => setSelectedSample(e.target.value)}
               disabled={availableSamples.length <= 1}
@@ -214,7 +214,7 @@ export default function SpatialCCC({ datasetConfig }) {
           </label>
         </div>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-3 h-9">
           {isLR ? (
             <>
               <button
@@ -223,7 +223,7 @@ export default function SpatialCCC({ datasetConfig }) {
                     prev === "horizontal" ? "vertical" : "horizontal",
                   )
                 }
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+                className="flex items-center justify-center gap-1.5 px-3 h-full text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
               >
                 {layoutMode === "horizontal"
                   ? "◫ Side-by-Side View"
@@ -238,7 +238,7 @@ export default function SpatialCCC({ datasetConfig }) {
                     defaultBg: "#000000",
                   })
                 }
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+                className="flex items-center justify-center gap-1.5 px-3 h-full text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
               >
                 <CameraIcon />
                 Score
@@ -252,7 +252,7 @@ export default function SpatialCCC({ datasetConfig }) {
                     defaultBg: "#000000",
                   })
                 }
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+                className="flex items-center justify-center gap-1.5 px-3 h-full text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
               >
                 <CameraIcon />
                 Ligand
@@ -266,7 +266,7 @@ export default function SpatialCCC({ datasetConfig }) {
                     defaultBg: "#000000",
                   })
                 }
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+                className="flex items-center justify-center gap-1.5 px-3 h-full text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
               >
                 <CameraIcon />
                 Receptor
@@ -282,7 +282,7 @@ export default function SpatialCCC({ datasetConfig }) {
                   defaultBg: "#000000",
                 })
               }
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
+              className="flex items-center justify-center gap-1.5 px-3 h-full text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm"
             >
               <CameraIcon />
               Map

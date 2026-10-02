@@ -412,12 +412,12 @@ export default function CellCellCommunication({
   return (
     <div className="p-6 flex flex-col gap-6 h-full bg-app">
       <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap items-end gap-4">
-        <label className="flex-1 min-w-[120px] flex flex-col">
-          <span className="text-xs font-semibold text-textMuted mb-1 uppercase tracking-wider">
+        <label className="flex-1 min-w-[120px] flex flex-col gap-1">
+          <span className="text-xs font-semibold text-textMuted uppercase tracking-wider">
             Microenv
           </span>
           <select
-            className="border border-borderMain p-2 rounded text-sm outline-none bg-panel text-textMain focus:border-primary"
+            className="border border-borderMain px-3 h-9 rounded text-sm outline-none bg-panel text-textMain focus:border-primary"
             value={selectedMicroenv}
             onChange={(e) => setSelectedMicroenv(e.target.value)}
           >
@@ -429,12 +429,12 @@ export default function CellCellCommunication({
           </select>
         </label>
 
-        <label className="flex-1 min-w-[140px] flex flex-col">
-          <span className="text-xs font-semibold text-textMuted mb-1 uppercase tracking-wider">
+        <label className="flex-1 min-w-[140px] flex flex-col gap-1">
+          <span className="text-xs font-semibold text-textMuted uppercase tracking-wider">
             Focal Cell Type
           </span>
           <select
-            className="border border-borderMain p-2 rounded text-sm outline-none bg-panel text-textMain focus:border-primary"
+            className="border border-borderMain px-3 h-9 rounded text-sm outline-none bg-panel text-textMain focus:border-primary"
             value={selectedCell}
             onChange={(e) => setSelectedCell(e.target.value)}
           >
@@ -447,15 +447,15 @@ export default function CellCellCommunication({
         </label>
 
         <div
-          className="flex-1 min-w-[200px] flex flex-col relative"
+          className="flex-1 min-w-[200px] flex flex-col gap-1 relative"
           ref={dropdownRef}
         >
-          <span className="text-xs font-semibold text-textMuted mb-1 uppercase tracking-wider">
+          <span className="text-xs font-semibold text-textMuted uppercase tracking-wider">
             Ligand-Receptor Pairs
           </span>
           <button
             type="button"
-            className="border border-borderMain p-2 rounded text-sm bg-panel text-textMain flex justify-between items-center outline-none text-left focus:border-primary"
+            className="border border-borderMain px-3 h-9 rounded text-sm bg-panel text-textMain flex justify-between items-center outline-none text-left focus:border-primary"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           >
             <span className="truncate">
@@ -528,25 +528,25 @@ export default function CellCellCommunication({
         </div>
 
         <div className="flex gap-4 border-l border-borderMain pl-4 ml-2">
-          <label className="flex-1 min-w-[100px] flex flex-col">
-            <span className="text-xs font-semibold text-primary mb-1 uppercase tracking-wider">
+          <label className="flex-1 min-w-[100px] flex flex-col gap-1">
+            <span className="text-xs font-semibold text-primary uppercase tracking-wider">
               Min Cells
             </span>
             <input
               type="number"
-              className="border border-primary bg-primary-light text-primary-dark p-2 rounded text-sm outline-none focus:ring-1 focus:ring-primary"
+              className="border border-primary bg-primary-light text-primary-dark px-3 h-9 rounded text-sm outline-none focus:ring-1 focus:ring-primary"
               value={minCells}
               onChange={(e) => setMinCells(Number(e.target.value))}
               min="0"
             />
           </label>
 
-          <label className="flex-1 min-w-[130px] flex flex-col">
-            <span className="text-xs font-semibold text-primary mb-1 uppercase tracking-wider">
+          <label className="flex-1 min-w-[130px] flex flex-col gap-1">
+            <span className="text-xs font-semibold text-primary uppercase tracking-wider">
               Color By
             </span>
             <select
-              className="border border-primary bg-primary-light text-primary-dark p-2 rounded text-sm outline-none focus:ring-1 focus:ring-primary"
+              className="border border-primary bg-primary-light text-primary-dark px-3 h-9 rounded text-sm outline-none focus:ring-1 focus:ring-primary"
               value={colorBy}
               onChange={(e) => setColorBy(e.target.value)}
             >
@@ -557,7 +557,7 @@ export default function CellCellCommunication({
           </label>
         </div>
 
-        <div className="ml-auto flex items-center">
+        <div className="ml-auto flex items-center h-9">
           <InfoModal title={tabInfo.ccc.title} content={tabInfo.ccc.content} />
         </div>
       </div>

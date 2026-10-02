@@ -465,7 +465,7 @@ export default function SpatialStats({
           <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
             Slide:
             <select
-              className="border border-borderMain rounded px-2 py-1 bg-panel font-normal focus:border-primary outline-none"
+              className="border border-borderMain rounded px-3 h-9 bg-panel font-normal focus:border-primary outline-none"
               value={selectedSlide}
               onChange={handleSlideChange}
             >
@@ -479,7 +479,7 @@ export default function SpatialStats({
           <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
             Sample:
             <select
-              className="border border-borderMain rounded px-2 py-1 bg-panel font-normal disabled:opacity-50 focus:border-primary outline-none"
+              className="border border-borderMain rounded px-3 h-9 bg-panel font-normal disabled:opacity-50 focus:border-primary outline-none"
               value={selectedSample}
               onChange={(e) => setSelectedSample(e.target.value)}
               disabled={availableSamples.length <= 1}
@@ -494,12 +494,12 @@ export default function SpatialStats({
         </div>
 
         <div className="flex items-center gap-4 ml-auto flex-wrap justify-end">
-          <div className="flex items-center gap-2 border-r border-borderMain pr-4">
+          <div className="flex items-center gap-2 border-r border-borderMain pr-4 h-9">
             <span className="text-xs font-bold text-textMuted uppercase tracking-wider">
               Spatial Map:
             </span>
             <select
-              className="border border-primary rounded px-2 py-1 text-xs bg-primary-light text-primary-dark font-semibold focus:border-primary outline-none"
+              className="border border-primary rounded px-3 h-9 text-xs bg-primary-light text-primary-dark font-semibold focus:border-primary outline-none"
               value={activeCategory}
               onChange={(e) => setActiveCategory(e.target.value)}
             >
@@ -517,7 +517,7 @@ export default function SpatialStats({
             </select>
           </div>
 
-          <div className="flex gap-2 bg-borderLight p-1 rounded">
+          <div className="flex items-center h-9 gap-1 bg-borderLight p-1 rounded">
             {[
               { id: "nhood", label: "Neighborhoods" },
               { id: "pcf", label: "Distances (PCF)" },
@@ -527,7 +527,7 @@ export default function SpatialStats({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-1.5 rounded text-sm font-semibold transition ${activeTab === tab.id ? "bg-panel shadow text-primary" : "text-textMuted hover:bg-borderMain hover:text-textMain"}`}
+                className={`px-4 h-full flex items-center justify-center rounded text-sm font-semibold transition ${activeTab === tab.id ? "bg-panel shadow text-primary" : "text-textMuted hover:bg-borderMain hover:text-textMain"}`}
               >
                 {tab.label}
               </button>

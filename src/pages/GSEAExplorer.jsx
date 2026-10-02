@@ -335,7 +335,7 @@ export default function GSEAExplorer() {
                 Cell Type
               </span>
               <select
-                className="border border-borderMain p-2 rounded outline-none focus:border-primary w-48 bg-panel text-textMain h-[38px]"
+                className="border border-borderMain px-3 rounded outline-none focus:border-primary w-48 bg-panel text-textMain h-9"
                 value={selectedCellType}
                 onChange={(e) => setSelectedCellType(e.target.value)}
               >
@@ -352,7 +352,7 @@ export default function GSEAExplorer() {
                 Comparison
               </span>
               <select
-                className="border border-borderMain p-2 rounded outline-none focus:border-primary w-48 bg-panel text-textMain h-[38px]"
+                className="border border-borderMain px-3 rounded outline-none focus:border-primary w-48 bg-panel text-textMain h-9"
                 value={selectedComparison}
                 onChange={(e) => setSelectedComparison(e.target.value)}
               >
@@ -369,7 +369,7 @@ export default function GSEAExplorer() {
                 Database
               </span>
               <select
-                className="border border-borderMain p-2 rounded outline-none focus:border-primary w-48 bg-panel text-textMain h-[38px]"
+                className="border border-borderMain px-3 rounded outline-none focus:border-primary w-48 bg-panel text-textMain h-9"
                 value={selectedDatabase}
                 onChange={(e) => setSelectedDatabase(e.target.value)}
               >
@@ -387,10 +387,10 @@ export default function GSEAExplorer() {
               <span className="text-textMuted uppercase tracking-wide text-xs">
                 Direction
               </span>
-              <div className="flex bg-panel border border-borderMain rounded overflow-hidden shadow-sm h-[38px]">
+              <div className="flex bg-panel border border-borderMain rounded overflow-hidden shadow-sm h-9">
                 <button
                   onClick={() => setViewDirection("UP")}
-                  className={`px-3 text-xs font-bold transition-colors ${
+                  className={`px-3 flex items-center justify-center text-xs font-bold transition-colors ${
                     viewDirection === "UP"
                       ? "bg-danger-light text-danger-dark border-r border-borderMain"
                       : "text-textMain hover:bg-borderLight border-r border-borderMain"
@@ -400,7 +400,7 @@ export default function GSEAExplorer() {
                 </button>
                 <button
                   onClick={() => setViewDirection("BOTH")}
-                  className={`px-3 text-xs font-bold transition-colors ${
+                  className={`px-3 flex items-center justify-center text-xs font-bold transition-colors ${
                     viewDirection === "BOTH"
                       ? "bg-textMuted text-textInverse border-r border-borderMain"
                       : "text-textMain hover:bg-borderLight border-r border-borderMain"
@@ -410,7 +410,7 @@ export default function GSEAExplorer() {
                 </button>
                 <button
                   onClick={() => setViewDirection("DOWN")}
-                  className={`px-3 text-xs font-bold transition-colors ${
+                  className={`px-3 flex items-center justify-center text-xs font-bold transition-colors ${
                     viewDirection === "DOWN"
                       ? "bg-primary-light text-primary-dark"
                       : "text-textMain hover:bg-borderLight"
@@ -431,7 +431,7 @@ export default function GSEAExplorer() {
                 type="number"
                 value={minSize}
                 onChange={(e) => setMinSize(e.target.value)}
-                className="border border-borderMain outline-none focus:border-primary px-2 rounded w-20 bg-panel text-textMain h-[38px]"
+                className="border border-borderMain outline-none focus:border-primary px-3 rounded w-20 bg-panel text-textMain h-9"
               />
             </label>
             <label className="text-sm font-semibold flex flex-col gap-1">
@@ -442,7 +442,7 @@ export default function GSEAExplorer() {
                 type="number"
                 value={maxSize}
                 onChange={(e) => setMaxSize(e.target.value)}
-                className="border border-borderMain outline-none focus:border-primary px-2 rounded w-20 bg-panel text-textMain h-[38px]"
+                className="border border-borderMain outline-none focus:border-primary px-3 rounded w-20 bg-panel text-textMain h-9"
               />
             </label>
             <label className="text-sm font-semibold flex flex-col gap-1">
@@ -454,7 +454,7 @@ export default function GSEAExplorer() {
                 step="0.01"
                 value={padjThreshold}
                 onChange={(e) => setPadjThreshold(e.target.value)}
-                className="border border-borderMain outline-none focus:border-primary px-2 rounded w-20 bg-panel text-textMain h-[38px]"
+                className="border border-borderMain outline-none focus:border-primary px-3 rounded w-20 bg-panel text-textMain h-9"
               />
             </label>
             <label className="text-sm font-semibold flex flex-col gap-1">
@@ -466,7 +466,7 @@ export default function GSEAExplorer() {
                 step="0.1"
                 value={nesThreshold}
                 onChange={(e) => setNesThreshold(e.target.value)}
-                className="border border-borderMain outline-none focus:border-primary px-2 rounded w-20 bg-panel text-textMain h-[38px]"
+                className="border border-borderMain outline-none focus:border-primary px-3 rounded w-20 bg-panel text-textMain h-9"
               />
             </label>
 
@@ -476,7 +476,7 @@ export default function GSEAExplorer() {
               <span className="text-textMuted uppercase tracking-wide text-xs">
                 Node Size
               </span>
-              <div className="h-[38px] flex items-center">
+              <div className="h-9 flex items-center">
                 <input
                   type="range"
                   min="0.2"
@@ -508,7 +508,7 @@ export default function GSEAExplorer() {
                 <button
                   onClick={runInteractiveGSEA}
                   disabled={isComputing}
-                  className={`ml-auto flex items-center justify-center font-bold px-4 h-[38px] rounded shadow-sm transition-all disabled:opacity-50 ${
+                  className={`ml-auto flex items-center justify-center font-bold px-4 h-9 rounded shadow-sm transition-all disabled:opacity-50 ${
                     isDirty
                       ? "bg-warning text-textInverse border border-warning-dark hover:bg-warning-dark shadow-md animate-pulse"
                       : "bg-primary text-textInverse hover:bg-primary-dark"

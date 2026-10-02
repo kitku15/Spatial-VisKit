@@ -99,7 +99,7 @@ export default function QualityControl() {
 
   return (
     <div className="p-6 flex flex-col gap-6 h-full overflow-y-auto bg-app">
-      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-4 justify-between items-center">
+      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-4 justify-between items-end">
         <div>
           <h2 className="text-xl font-bold text-textMain">
             Pre-Filter Quality Control Metrics
@@ -114,7 +114,7 @@ export default function QualityControl() {
           <label className="text-sm font-semibold flex items-center gap-2">
             <span className="text-textMuted">Slide:</span>
             <select
-              className="border border-borderMain rounded px-3 py-1.5 bg-panel text-textMain font-normal outline-none focus:border-primary"
+              className="border border-borderMain rounded px-3 h-9 bg-panel text-textMain font-normal outline-none focus:border-primary"
               value={selectedSlide}
               onChange={(e) => setSelectedSlide(e.target.value)}
             >

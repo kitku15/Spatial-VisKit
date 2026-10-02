@@ -111,15 +111,15 @@ export default function TranscriptionFactor({
   return (
     <div className="p-6 flex flex-col gap-6 h-full bg-app">
       <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap items-center gap-6">
-        <div className="flex bg-borderLight rounded p-1">
+        <div className="flex items-center h-9 bg-borderLight rounded p-1">
           <button
-            className={`px-4 py-1 rounded text-sm font-semibold transition cursor-pointer ${viewMode === "UMAP" ? "bg-panel shadow text-primary" : "text-textMuted hover:text-textMain"}`}
+            className={`px-4 h-full flex items-center justify-center rounded text-sm font-semibold transition cursor-pointer ${viewMode === "UMAP" ? "bg-panel shadow text-primary" : "text-textMuted hover:text-textMain"}`}
             onClick={() => setViewMode("UMAP")}
           >
             UMAP
           </button>
           <button
-            className={`px-4 py-1 rounded text-sm font-semibold transition cursor-pointer ${viewMode === "Spatial" ? "bg-panel shadow text-primary" : "text-textMuted hover:text-textMain"}`}
+            className={`px-4 h-full flex items-center justify-center rounded text-sm font-semibold transition cursor-pointer ${viewMode === "Spatial" ? "bg-panel shadow text-primary" : "text-textMuted hover:text-textMain"}`}
             onClick={() => setViewMode("Spatial")}
           >
             Spatial
@@ -131,7 +131,7 @@ export default function TranscriptionFactor({
             <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
               Slide:
               <select
-                className="border border-borderMain rounded px-2 py-1 bg-panel font-normal outline-none focus:border-primary"
+                className="border border-borderMain rounded px-3 h-9 bg-panel font-normal outline-none focus:border-primary"
                 value={selectedSlide}
                 onChange={handleSlideChange}
               >
@@ -145,7 +145,7 @@ export default function TranscriptionFactor({
             <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
               Sample:
               <select
-                className="border border-borderMain rounded px-2 py-1 bg-panel font-normal disabled:opacity-50 outline-none focus:border-primary"
+                className="border border-borderMain rounded px-3 h-9 bg-panel font-normal disabled:opacity-50 outline-none focus:border-primary"
                 value={selectedSample}
                 onChange={(e) => setSelectedSample(e.target.value)}
                 disabled={availableSamples.length <= 1}
@@ -163,7 +163,7 @@ export default function TranscriptionFactor({
         <label className="text-sm font-semibold flex items-center gap-2 border-l border-borderMain pl-6 text-textMain">
           Color By:
           <select
-            className="border border-primary rounded px-2 py-1 bg-primary-light text-primary-dark font-bold outline-none cursor-pointer focus:ring-1 focus:ring-primary"
+            className="border border-primary rounded px-3 h-9 bg-primary-light text-primary-dark font-bold outline-none cursor-pointer focus:ring-1 focus:ring-primary"
             value={activeCategory}
             onChange={(e) => setActiveCategory(e.target.value)}
           >

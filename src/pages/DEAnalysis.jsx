@@ -37,7 +37,7 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
   return (
     <div ref={wrapperRef} className="relative flex-1 max-w-[200px]">
       <div
-        className="border border-borderMain bg-panel p-1 rounded flex items-center justify-between cursor-text"
+        className="border border-borderMain bg-panel px-2 h-9 rounded flex items-center justify-between cursor-text"
         onClick={() => setIsOpen(true)}
       >
         <input
@@ -315,13 +315,13 @@ export default function DEAnalysis({ customColors = {} }) {
 
   return (
     <div className="p-6 flex flex-col gap-4 h-full bg-app">
-      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-6 items-center">
+      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-6 items-end">
         <label className="text-sm font-semibold flex flex-col gap-1">
           <span className="text-textMuted uppercase tracking-wide text-xs">
             Annotation / Clustering
           </span>
           <select
-            className="border border-borderMain p-2 rounded outline-none w-64 bg-panel text-textMain focus:border-primary"
+            className="border border-borderMain px-3 h-9 rounded outline-none w-64 bg-panel text-textMain focus:border-primary"
             value={selectedAnnotation}
             onChange={(e) => setSelectedAnnotation(e.target.value)}
           >
@@ -338,7 +338,7 @@ export default function DEAnalysis({ customColors = {} }) {
             Target Cluster (Vs Rest)
           </span>
           <select
-            className="border border-primary bg-primary-light text-primary-dark p-2 rounded outline-none w-48 max-w-full focus:ring-1 focus:ring-primary"
+            className="border border-primary bg-primary-light text-primary-dark px-3 h-9 rounded outline-none w-48 max-w-full focus:ring-1 focus:ring-primary"
             value={selectedCluster}
             onChange={(e) => {
               setSelectedCluster(e.target.value);
@@ -355,11 +355,11 @@ export default function DEAnalysis({ customColors = {} }) {
           </select>
         </label>
 
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-4 h-9">
           <button
             onClick={downloadFullTable}
             disabled={!volcanoData}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 px-3 h-full text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             title="Download Full Differential Expression Table (CSV)"
           >
             <svg
@@ -378,7 +378,7 @@ export default function DEAnalysis({ customColors = {} }) {
             Export Stats Table
           </button>
 
-          <div className="border-l border-borderMain h-6 mx-1"></div>
+          <div className="border-l border-borderMain h-8 mx-1"></div>
 
           <InfoModal
             title={tabInfo.deAnalysis.title}

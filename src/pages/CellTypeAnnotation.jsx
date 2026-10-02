@@ -188,11 +188,11 @@ export default function CellTypeAnnotation({ datasetConfig }) {
           <div className="flex items-center gap-4">
             <button
               onClick={addColumn}
-              className="bg-success-light text-success-dark border border-success px-3 py-1 rounded text-sm hover:bg-success hover:text-textInverse transition"
+              className="bg-success-light text-success-dark border border-success px-4 h-9 rounded text-sm hover:bg-success hover:text-textInverse transition flex items-center justify-center font-bold"
             >
               + Add Flow Step
             </button>
-            <div className="pl-4 border-l border-borderMain flex items-center">
+            <div className="pl-4 border-l border-borderMain flex items-center h-8">
               <InfoModal
                 title={tabInfo.annotation.title}
                 content={tabInfo.annotation.content}
@@ -212,7 +212,7 @@ export default function CellTypeAnnotation({ datasetConfig }) {
                   Step {index + 1}
                 </label>
                 <select
-                  className="w-full border border-borderMain p-2 rounded text-sm bg-panel text-textMain outline-none focus:border-primary"
+                  className="w-full border border-borderMain px-3 h-9 rounded text-sm bg-panel text-textMain outline-none focus:border-primary"
                   value={col}
                   onChange={(e) => handleColumnChange(index, e.target.value)}
                 >
@@ -226,14 +226,16 @@ export default function CellTypeAnnotation({ datasetConfig }) {
               {selectedCols.length > 2 && (
                 <button
                   onClick={() => removeColumn(index)}
-                  className="bg-danger-light text-danger px-2 py-2 rounded hover:bg-danger hover:text-textInverse border border-danger-light transition-colors"
+                  className="bg-danger-light text-danger w-9 h-9 flex items-center justify-center rounded hover:bg-danger hover:text-textInverse border border-danger-light transition-colors flex-shrink-0"
                   title="Remove this step"
                 >
                   ✕
                 </button>
               )}
               {index < selectedCols.length - 1 && (
-                <div className="text-textMuted font-bold px-2 py-2">→</div>
+                <div className="text-textMuted font-bold px-2 h-9 flex items-center">
+                  →
+                </div>
               )}
             </div>
           ))}
@@ -241,7 +243,7 @@ export default function CellTypeAnnotation({ datasetConfig }) {
           <button
             onClick={handleGenerateSankey}
             disabled={isLoading}
-            className={`font-semibold px-6 py-2 rounded shadow transition ml-auto border ${isLoading ? "bg-borderMain text-borderLight border-borderMain cursor-not-allowed" : "bg-primary text-textInverse border-primary hover:bg-primary-dark"}`}
+            className={`font-semibold px-6 h-9 flex items-center justify-center rounded shadow transition ml-auto border ${isLoading ? "bg-borderMain text-borderLight border-borderMain cursor-not-allowed" : "bg-primary text-textInverse border-primary hover:bg-primary-dark"}`}
           >
             {isLoading ? "Loading..." : "Generate Sankey"}
           </button>

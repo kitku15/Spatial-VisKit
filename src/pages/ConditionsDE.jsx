@@ -32,7 +32,7 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
   return (
     <div ref={wrapperRef} className="relative flex-1 max-w-[250px]">
       <div
-        className="border border-borderMain bg-panel p-1.5 rounded flex items-center justify-between cursor-text"
+        className="border border-borderMain bg-panel px-3 h-9 rounded flex items-center justify-between cursor-text"
         onClick={() => setIsOpen(true)}
       >
         <input
@@ -445,13 +445,13 @@ export default function ConditionsDE() {
 
   return (
     <div className="p-6 flex flex-col gap-4 h-full bg-app overflow-y-auto">
-      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-6 items-center">
+      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-6 items-end">
         <label className="text-sm font-semibold flex flex-col gap-1">
           <span className="text-textMuted uppercase tracking-wide text-xs">
             Cell Type
           </span>
           <select
-            className="border border-borderMain p-2 rounded outline-none w-64 bg-panel text-textMain focus:border-primary"
+            className="border border-borderMain px-3 h-9 rounded outline-none w-64 bg-panel text-textMain focus:border-primary"
             value={selectedCellType}
             onChange={(e) => {
               const newCellType = e.target.value;
@@ -474,7 +474,7 @@ export default function ConditionsDE() {
             Pairwise Comparison
           </span>
           <select
-            className="border border-primary bg-primary-light text-primary-dark p-2 rounded outline-none w-64 focus:ring-1 focus:ring-primary"
+            className="border border-primary bg-primary-light text-primary-dark px-3 h-9 rounded outline-none w-64 focus:ring-1 focus:ring-primary"
             value={selectedComparison}
             onChange={(e) => {
               setSelectedComparison(e.target.value);
@@ -489,23 +489,23 @@ export default function ConditionsDE() {
           </select>
         </label>
 
-        <div className="ml-auto flex items-center gap-6 mt-4">
-          <label className="flex items-center gap-2 text-sm text-textMuted cursor-pointer font-semibold hover:text-textMain">
+        <div className="ml-auto flex items-center gap-5 h-9">
+          <label className="flex items-center h-full gap-2 text-sm text-textMuted cursor-pointer font-semibold hover:text-textMain">
             <input
               type="checkbox"
               checked={filterZeros}
               onChange={(e) => setFilterZeros(e.target.checked)}
               className="cursor-pointer w-4 h-4 accent-primary"
             />
-            Hide Zero-Expression Cells
+            Hide Zeros
           </label>
 
-          <div className="border-l border-borderMain h-6 mx-1"></div>
+          <div className="border-l border-borderMain h-8 mx-1"></div>
 
           <button
             onClick={downloadFullTable}
             disabled={!volcanoData}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 px-3 h-9 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             title="Download Full Differential Expression Table (CSV)"
           >
             <svg
