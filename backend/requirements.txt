@@ -5,3 +5,6 @@ pandas
 numpy
 scipy
 pydantic
+gseapy>=1.1.5
+cachetools
+pyarrow

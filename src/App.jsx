@@ -20,6 +20,7 @@ import QualityControl from "./pages/QualityControl";
 import MultiplexGeneOverlay from "./pages/MultiplexGeneOverlay";
 import DEAnalysis from "./pages/DEAnalysis";
 import ConditionsDE from "./pages/ConditionsDE";
+import GSEAExplorer from "./pages/GSEAExplorer";
 import SpatialCCC from "./pages/SpatialCCC";
 import ConditionsCausal from "./pages/ConditionsCausal";
 import CompositionAnalysis from "./pages/CompositionAnalysis";
@@ -195,6 +196,7 @@ export default function App() {
                 element={<DEAnalysis customColors={customColors} />}
               />
               <Route path="/conditions-de" element={<ConditionsDE />} />
+              <Route path="/gsea" element={<GSEAExplorer />} />
               <Route path="/conditions-causal" element={<ConditionsCausal />} />
             </>
           )}

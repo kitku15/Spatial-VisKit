@@ -12,8 +12,62 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+import hashlib
+import json
+import asyncio
+from concurrent.futures import ProcessPoolExecutor
+from cachetools import TTLCache
+import gseapy as gp
+
 from store import store
-from schemas import ExportRequest
+from schemas import ExportRequest, GSEARequest
+
+# Cache up to 50 unique queries for 1 hour to prevent redundant calculations
+gsea_cache = TTLCache(maxsize=50, ttl=3600)
+# Process pool isolates heavy computation from the async event loop
+executor = ProcessPoolExecutor(max_workers=2)
+
+
+def _run_gsea_task(params_dict):
+    ct = params_dict["celltype"]
+    comp = params_dict["comparison"]
+    db = params_dict["database"]
+
+    pq_path = os.path.join(
+        store.module_dir, "aux_data", "gsea", "rankings", f"{ct}_{comp}.parquet"
+    )
+    if not os.path.exists(pq_path):
+        raise ValueError(f"Ranking file not found: {pq_path}")
+
+    df = pd.read_parquet(pq_path)
+    rnk = df[["names", "logfoldchanges"]].copy()
+    rnk["names"] = rnk["names"].astype(str).str.upper()
+    rnk = rnk.sort_values(by="logfoldchanges", ascending=False)
+
+    pre_res = gp.prerank(
+        rnk=rnk,
+        gene_sets=db,
+        min_size=params_dict["min_size"],
+        max_size=params_dict["max_size"],
+        threads=1,
+        seed=42,
+        verbose=False,
+    )
+
+    res_df = pre_res.res2d
+    if res_df.empty:
+        return []
+
+    padj = params_dict["padj_threshold"]
+    nes_thresh = params_dict["nes_threshold"]
+
+    sig = res_df[
+        (res_df["FDR q-val"] <= padj) & (res_df["NES"].abs() >= nes_thresh)
+    ].copy()
+    sig["FDR q-val"] = sig["FDR q-val"].replace(0, 1e-10)
+
+    return sig.to_dict(orient="records")
+
 
 logger = logging.getLogger(__name__)
 
@@ -378,3 +432,24 @@ def export_data(req: ExportRequest):
     response = StreamingResponse(iter([stream.getvalue()]), media_type="text/csv")
     response.headers["Content-Disposition"] = "attachment; filename=spatial_export.csv"
     return response
+
+
+@app.post("/api/gsea")
+async def run_gsea_endpoint(req: GSEARequest):
+    _ensure_loaded()
+
+    req_dict = req.dict() if hasattr(req, "dict") else req.model_dump()
+    param_str = json.dumps(req_dict, sort_keys=True)
+    cache_key = hashlib.md5(param_str.encode()).hexdigest()
+
+    if cache_key in gsea_cache:
+        return gsea_cache[cache_key]
+
+    loop = asyncio.get_running_loop()
+    try:
+        res = await loop.run_in_executor(executor, _run_gsea_task, req_dict)
+        gsea_cache[cache_key] = res
+        return res
+    except Exception as e:
+        logger.error(f"GSEA Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
