@@ -66,7 +66,34 @@ def _run_gsea_task(params_dict):
     ].copy()
     sig["FDR q-val"] = sig["FDR q-val"].replace(0, 1e-10)
 
-    return sig.to_dict(orient="records")
+    net_nodes, net_edges = [], []
+    try:
+        nodes, edges = gp.enrichment_map(sig)
+        if not nodes.empty and not edges.empty:
+            for idx, row in nodes.iterrows():
+                net_nodes.append(
+                    {
+                        "id": str(idx),
+                        "name": row["Term"],
+                        "nes": float(row["NES"]),
+                        "hits": float(row.get("Hits_ratio", 0.5)),
+                    }
+                )
+            for idx, row in edges.iterrows():
+                net_edges.append(
+                    {
+                        "source": str(row["src_idx"]),
+                        "target": str(row["targ_idx"]),
+                        "weight": float(row["jaccard_coef"]),
+                    }
+                )
+    except Exception:
+        pass
+
+    return {
+        "table": sig.to_dict(orient="records"),
+        "network": {"nodes": net_nodes, "edges": net_edges},
+    }
 
 
 logger = logging.getLogger(__name__)

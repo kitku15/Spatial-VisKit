@@ -145,9 +145,20 @@ Identify marker genes defining specific cell clusters.
 
 Visualize PyDEseq2 results on pairwise comparisons (e.g., Healthy vs. Disease) _within_ a specific cell type.
 
-- **Condition Volcano Plot:** Instantly see the top upregulated and downregulated genes between the two selected conditions.
+- **Differential Expression Plots:** Toggle between Volcano Plots (Fold Change vs Significance) and MA Plots (Fold Change vs Mean Expression) to instantly see the top altered genes.
 - **Split Violins:** Search for up to 3 specific genes to compare their distributions side-by-side across the two conditions.
 - **Zero-Filtering:** Easily toggle hiding cells with 0 expression to compare transcriptomic shifts only in actively expressing cells.
+</details>
+
+<details>
+<summary>Gene Set Enrichment Analysis (GSEA)</summary>
+
+Perform fast Gene Set Enrichment Analysis (fGSEA) to identify altered biological pathways across your experimental conditions.
+
+- A bar plot shows Normalized Enrichment Scores (NES) and Adjusted P-values.
+- Run computations instantly in the web backend. Adjust minimum/maximum gene set sizes, NES cutoffs, and FDR limits.
+- Explore pathway connectivity using ienrichment graphs.
+- Switch between MSigDB Hallmark, KEGG, and Reactome pathway databases.
 </details>
 
 <details>

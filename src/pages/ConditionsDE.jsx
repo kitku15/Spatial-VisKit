@@ -263,7 +263,7 @@ export default function ConditionsDE() {
       else colors.push(themeColors.neutral);
 
       hover.push(
-        `<b>${volcanoData.names[i]}</b><br>Base Mean: ${bm}<br>Log2FC: ${fc}<br>Adj P: ${p.toExponential(2)}`,
+        `<b>${volcanoData.names[i]}</b><br>Base Mean: ${bm.toFixed(2)}<br>Log2FC: ${fc}<br>Adj P: ${p.toExponential(2)}`,
       );
 
       if (plotType === "volcano") {

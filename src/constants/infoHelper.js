@@ -102,4 +102,13 @@ export const tabInfo = {
       "• Altered TF Activity (Bottom-Left): Shows which Transcription Factors are statistically shifted in the Receiver Cell.\n" +
       "• Causal Network (Right): An interactive force-directed graph mapping the known biological pathways linking the active Receptors (Green) through intermediate Kinases (Grey) to the Transcription Factors (Purple). Solid lines = Activation, Dashed lines = Inhibition.",
   },
+  gsea: {
+    title: "Interactive GSEA Guide",
+    content:
+      "Welcome to the Interactive GSEA tab.\n\n" +
+      "• Overview: Perform fast Gene Set Enrichment Analysis (GSEA) to identify upregulated or downregulated biological pathways between conditions.\n" +
+      "• Tuning: Filter by specific Cell Types and Databases (e.g., KEGG, Reactome). Adjust Size and Significance thresholds dynamically. If the button turns orange, click it to compute the new parameters!\n" +
+      "• Dual-Axis Plot: Compares the Normalized Enrichment Score (NES) magnitude (Bars, bottom axis) against its statistical significance (Line, top axis) for the top altered pathways.\n" +
+      "• Network Map: Explores pathway connectivity. Pathways that share a high number of genes are connected by edges, revealing broader biological shifts.",
+  },
 };
