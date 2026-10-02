@@ -6,9 +6,9 @@ An interactive, web-based visualization tool for exploring single cell spatial t
 
 Spatial-VisKit allows users to explore tissue maps, UMAPs, cell-cell communication, transcription factor activity, and clustering directly in their web browser. Users can also download filtered data and export plots and spatial tissue maps. More features are planned for future releases!
 
-- [Read the documentation on the pipeline (**scSpatial-Kit**)](https://kitku15.github.io/scST-pipeline/)
+- [Read the documentation on the pipeline (**scSpatial-Kit**)](https://kitku15.github.io/scSpatial-Kit/)
 
-- [Read the documentation on the visualization tool (**Spatial-VisKit**)](https://kitku15.github.io/scST-pipeline/svk/home/)
+- [Read the documentation on the visualization tool (**Spatial-VisKit**)](https://kitku15.github.io/scSpatial-Kit/svk/home/)
 
 <img src="assets/demo.gif" alt="Spatial-VisKit Demo" width="800">
 
