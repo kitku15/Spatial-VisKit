@@ -52,13 +52,13 @@ export default function ColorSettings({ customColors, setCustomColors }) {
 
   return (
     <div className="p-6 flex flex-col gap-6 h-full bg-app overflow-y-auto">
-      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex justify-between items-center">
+      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex justify-between items-end">
         <label className="text-sm font-semibold flex flex-col gap-1">
           <span className="text-textMuted uppercase tracking-wide text-xs">
             Select Category to Color
           </span>
           <select
-            className="border border-borderMain p-2 rounded outline-none w-64 bg-panel text-textMain focus:border-primary"
+            className="border border-borderMain px-3 h-9 rounded outline-none w-64 bg-panel text-textMain focus:border-primary"
             value={selectedCol}
             onChange={(e) => setSelectedCol(e.target.value)}
           >
@@ -73,7 +73,7 @@ export default function ColorSettings({ customColors, setCustomColors }) {
         <button
           onClick={handleReset}
           disabled={isTooManyCategories}
-          className="bg-danger-light text-danger-dark border border-danger px-4 py-2 rounded text-sm font-bold shadow-sm hover:bg-danger hover:text-textInverse transition disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bg-danger-light text-danger-dark border border-danger px-4 h-9 flex items-center justify-center rounded text-sm font-bold shadow-sm hover:bg-danger hover:text-textInverse transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Reset {selectedCol} to Defaults
         </button>

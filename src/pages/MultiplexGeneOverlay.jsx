@@ -36,7 +36,7 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
   return (
     <div ref={wrapperRef} className="relative flex-1 min-w-0">
       <div
-        className="border border-borderMain bg-panel p-1 rounded flex items-center justify-between cursor-text"
+        className="border border-borderMain bg-panel px-2 h-8 rounded flex items-center justify-between cursor-text"
         onClick={() => setIsOpen(true)}
       >
         <input
@@ -330,7 +330,7 @@ export default function MultiplexGeneOverlay() {
           <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
             Slide:
             <select
-              className="border border-borderMain rounded px-2 py-1 bg-panel font-normal outline-none focus:border-primary"
+              className="border border-borderMain rounded px-3 h-9 bg-panel font-normal outline-none focus:border-primary"
               value={selectedSlide}
               onChange={handleSlideChange}
             >
@@ -348,7 +348,7 @@ export default function MultiplexGeneOverlay() {
           <label className="text-sm font-semibold flex items-center gap-2 text-textMain">
             Sample:
             <select
-              className="border border-borderMain rounded px-2 py-1 bg-panel font-normal outline-none disabled:opacity-50 focus:border-primary"
+              className="border border-borderMain rounded px-3 h-9 bg-panel font-normal outline-none disabled:opacity-50 focus:border-primary"
               value={selectedSample}
               onChange={(e) => setSelectedSample(e.target.value)}
               disabled={availableSamples.length <= 1}
@@ -424,7 +424,7 @@ export default function MultiplexGeneOverlay() {
                 />
 
                 <select
-                  className="border border-borderMain p-1 rounded outline-none text-xs font-bold uppercase tracking-wider bg-panel"
+                  className="border border-borderMain px-2 h-8 rounded outline-none text-xs font-bold uppercase tracking-wider bg-panel"
                   style={{ color: ch.color.toLowerCase() }}
                   value={ch.color}
                   onChange={(e) =>

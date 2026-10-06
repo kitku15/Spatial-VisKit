@@ -18,6 +18,7 @@ const analysisLinks = [
   { to: "/spatial-ccc", label: "Spatial CCC" },
   { to: "/de-analysis", label: "Cell Type DE Analysis" },
   { to: "/conditions-de", label: "Conditions DE Analysis" },
+  { to: "/gsea", label: "GSEA" },
   { to: "/conditions-causal", label: "Conditions CCC" },
 ];
 

@@ -6,9 +6,9 @@ An interactive, web-based visualization tool for exploring single cell spatial t
 
 Spatial-VisKit allows users to explore tissue maps, UMAPs, cell-cell communication, transcription factor activity, and clustering directly in their web browser. Users can also download filtered data and export plots and spatial tissue maps. More features are planned for future releases!
 
-- [Read the documentation on the pipeline (**scSpatial-Kit**)](https://kitku15.github.io/scST-pipeline/)
+- [Read the documentation on the pipeline (**scSpatial-Kit**)](https://kitku15.github.io/scSpatial-Kit/)
 
-- [Read the documentation on the visualization tool (**Spatial-VisKit**)](https://kitku15.github.io/scST-pipeline/svk/home/)
+- [Read the documentation on the visualization tool (**Spatial-VisKit**)](https://kitku15.github.io/scSpatial-Kit/svk/home/)
 
 <img src="assets/demo.gif" alt="Spatial-VisKit Demo" width="800">
 
@@ -145,9 +145,21 @@ Identify marker genes defining specific cell clusters.
 
 Visualize PyDEseq2 results on pairwise comparisons (e.g., Healthy vs. Disease) _within_ a specific cell type.
 
-- **Condition Volcano Plot:** Instantly see the top upregulated and downregulated genes between the two selected conditions.
+- **Differential Expression Plots:** Toggle between Volcano Plots (Fold Change vs Significance) and MA Plots (Fold Change vs Mean Expression) to instantly see the top altered genes.
 - **Split Violins:** Search for up to 3 specific genes to compare their distributions side-by-side across the two conditions.
 - **Zero-Filtering:** Easily toggle hiding cells with 0 expression to compare transcriptomic shifts only in actively expressing cells.
+</details>
+
+<details>
+<summary>Gene Set Enrichment Analysis (GSEA)</summary>
+<img src="assets/GSEA.png" alt="Logo" width="600">
+
+Perform fast Gene Set Enrichment Analysis (fGSEA) to identify altered biological pathways across your experimental conditions.
+
+- A bar plot shows Normalized Enrichment Scores (NES) and Adjusted P-values.
+- Run computations instantly in the web backend. Adjust minimum/maximum gene set sizes, NES cutoffs, and FDR limits.
+- Explore pathway connectivity using ienrichment graphs.
+- Switch between MSigDB Hallmark, KEGG, and Reactome pathway databases.
 </details>
 
 <details>

@@ -349,14 +349,14 @@ export default function ConditionsCausal() {
   return (
     <div className="p-6 flex flex-col gap-4 h-full bg-app">
       {/* Top Bar: Controls */}
-      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap items-center gap-6">
+      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap items-end gap-6">
         {/* Condition Comparison Selector */}
         <label className="text-sm font-semibold flex flex-col gap-1">
           <span className="text-primary-dark uppercase tracking-wide text-xs">
             Treatment Comparison
           </span>
           <select
-            className="border border-primary bg-primary-light text-primary-dark p-2 rounded outline-none focus:ring-1 focus:ring-primary w-48"
+            className="border border-primary bg-primary-light text-primary-dark px-3 h-9 rounded outline-none focus:ring-1 focus:ring-primary w-48"
             value={selectedComparison}
             onChange={(e) => {
               const comp = e.target.value;
@@ -383,7 +383,7 @@ export default function ConditionsCausal() {
           </select>
         </label>
 
-        <div className="h-8 border-l border-borderLight mx-2"></div>
+        <div className="h-9 border-l border-borderLight mx-2"></div>
 
         {/* Sender Cell Type Selector */}
         <label className="text-sm font-semibold flex flex-col gap-1">
@@ -391,7 +391,7 @@ export default function ConditionsCausal() {
             Sender Cell Type (Ligands)
           </span>
           <select
-            className="border border-borderMain p-2 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
+            className="border border-borderMain px-3 h-9 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
             value={effectiveSource}
             onChange={(e) => {
               const src = e.target.value;
@@ -419,7 +419,7 @@ export default function ConditionsCausal() {
             Receiver Cell Type (Receptors)
           </span>
           <select
-            className="border border-borderMain p-2 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
+            className="border border-borderMain px-3 h-9 rounded outline-none w-48 bg-panel text-textMain focus:border-primary"
             value={effectiveTarget}
             onChange={(e) => setSelectedTarget(e.target.value)}
           >
@@ -431,8 +431,8 @@ export default function ConditionsCausal() {
           </select>
         </label>
 
-        <div className="ml-auto flex items-center gap-4">
-          <div className="flex gap-3 text-xs font-bold text-textMuted border-r border-borderMain pr-4">
+        <div className="ml-auto flex items-center gap-4 h-9">
+          <div className="flex items-center h-full gap-3 text-xs font-bold text-textMuted border-r border-borderMain pr-4">
             <span className="flex items-center gap-1">
               <span
                 className="w-3 h-3 rounded-full"

@@ -32,7 +32,7 @@ function SearchableSelect({ options, value, onChange, placeholder }) {
   return (
     <div ref={wrapperRef} className="relative flex-1 max-w-[250px]">
       <div
-        className="border border-borderMain bg-panel p-1.5 rounded flex items-center justify-between cursor-text"
+        className="border border-borderMain bg-panel px-3 h-9 rounded flex items-center justify-between cursor-text"
         onClick={() => setIsOpen(true)}
       >
         <input
@@ -97,6 +97,7 @@ export default function ConditionsDE() {
   const [cellClusters, setCellClusters] = useState(null);
   const [geneExpressions, setGeneExpressions] = useState({});
   const [filterZeros, setFilterZeros] = useState(false);
+  const [plotType, setPlotType] = useState("volcano");
 
   useEffect(() => {
     async function initData() {
@@ -243,29 +244,42 @@ export default function ConditionsDE() {
     document.body.removeChild(link);
   };
 
-  const volcanoPlot = useMemo(() => {
+  const plotConfig = useMemo(() => {
     if (!volcanoData) return null;
+
     const colors = [];
     const hover = [];
-    const logp = [];
+    const xVals = [];
+    const yVals = [];
 
     for (let i = 0; i < volcanoData.names.length; i++) {
       let fc = volcanoData.logfc[i];
       let p = Math.max(volcanoData.pvals[i], 1e-300);
-      logp.push(-Math.log10(p));
-      hover.push(
-        `<b>${volcanoData.names[i]}</b><br>Log2FC: ${fc}<br>Adj P: ${p.toExponential(2)}`,
-      );
+      let bm = volcanoData.baseMean ? volcanoData.baseMean[i] : 0;
+      let logp = -Math.log10(p);
 
       if (fc > 0.5 && p < 0.05) colors.push(themeColors.danger);
       else if (fc < -0.5 && p < 0.05) colors.push(themeColors.primary);
       else colors.push(themeColors.neutral);
+
+      hover.push(
+        `<b>${volcanoData.names[i]}</b><br>Base Mean: ${bm.toFixed(2)}<br>Log2FC: ${fc}<br>Adj P: ${p.toExponential(2)}`,
+      );
+
+      if (plotType === "volcano") {
+        xVals.push(fc);
+        yVals.push(logp);
+      } else {
+        // MA Plot: X is Base Mean (clamp at 1e-3 so log scale doesn't break on 0s), Y is Log2FC
+        xVals.push(Math.max(bm, 1e-3));
+        yVals.push(fc);
+      }
     }
 
-    return [
+    const traces = [
       {
-        x: volcanoData.logfc,
-        y: logp,
+        x: xVals,
+        y: yVals,
         text: hover,
         mode: "markers",
         type: "scattergl",
@@ -273,7 +287,55 @@ export default function ConditionsDE() {
         marker: { color: colors, size: 6, opacity: 0.7 },
       },
     ];
-  }, [volcanoData]);
+
+    const layout = {
+      autosize: true,
+      showlegend: false,
+      margin: { l: 50, r: 20, t: 10, b: 40 },
+      paper_bgcolor: themeColors.paper,
+      plot_bgcolor: themeColors.paper,
+      font: { color: themeColors.label },
+    };
+
+    if (plotType === "volcano") {
+      layout.xaxis = {
+        title: "Log2 Fold Change",
+        zeroline: true,
+        zerolinecolor: themeColors.border,
+      };
+      layout.yaxis = {
+        title: "-Log10(Adj. P-Value)",
+        zeroline: true,
+        zerolinecolor: themeColors.border,
+      };
+    } else {
+      layout.xaxis = {
+        title: "Mean Expression (baseMean)",
+        type: "log",
+        zeroline: false,
+      };
+      layout.yaxis = {
+        title: "Log2 Fold Change",
+        zeroline: true,
+        zerolinecolor: themeColors.border,
+      };
+      layout.shapes = [
+        {
+          type: "line",
+          xref: "paper",
+          x0: 0,
+          x1: 1,
+          yref: "y",
+          y0: 0,
+          y1: 0,
+          line: { color: "black", width: 1, dash: "dot" },
+          opacity: 0.5,
+        },
+      ];
+    }
+
+    return { traces, layout };
+  }, [volcanoData, plotType]);
 
   const createSingleSplitViolin = (gene) => {
     if (!config || !cellClusters || !gene || !geneExpressions[gene.safe])
@@ -383,13 +445,13 @@ export default function ConditionsDE() {
 
   return (
     <div className="p-6 flex flex-col gap-4 h-full bg-app overflow-y-auto">
-      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-6 items-center">
+      <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-6 items-end">
         <label className="text-sm font-semibold flex flex-col gap-1">
           <span className="text-textMuted uppercase tracking-wide text-xs">
             Cell Type
           </span>
           <select
-            className="border border-borderMain p-2 rounded outline-none w-64 bg-panel text-textMain focus:border-primary"
+            className="border border-borderMain px-3 h-9 rounded outline-none w-64 bg-panel text-textMain focus:border-primary"
             value={selectedCellType}
             onChange={(e) => {
               const newCellType = e.target.value;
@@ -412,7 +474,7 @@ export default function ConditionsDE() {
             Pairwise Comparison
           </span>
           <select
-            className="border border-primary bg-primary-light text-primary-dark p-2 rounded outline-none w-64 focus:ring-1 focus:ring-primary"
+            className="border border-primary bg-primary-light text-primary-dark px-3 h-9 rounded outline-none w-64 focus:ring-1 focus:ring-primary"
             value={selectedComparison}
             onChange={(e) => {
               setSelectedComparison(e.target.value);
@@ -427,23 +489,23 @@ export default function ConditionsDE() {
           </select>
         </label>
 
-        <div className="ml-auto flex items-center gap-6 mt-4">
-          <label className="flex items-center gap-2 text-sm text-textMuted cursor-pointer font-semibold hover:text-textMain">
+        <div className="ml-auto flex items-center gap-5 h-9">
+          <label className="flex items-center h-full gap-2 text-sm text-textMuted cursor-pointer font-semibold hover:text-textMain">
             <input
               type="checkbox"
               checked={filterZeros}
               onChange={(e) => setFilterZeros(e.target.checked)}
               className="cursor-pointer w-4 h-4 accent-primary"
             />
-            Hide Zero-Expression Cells
+            Hide Zeros
           </label>
 
-          <div className="border-l border-borderMain h-6 mx-1"></div>
+          <div className="border-l border-borderMain h-8 mx-1"></div>
 
           <button
             onClick={downloadFullTable}
             disabled={!volcanoData}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 px-3 h-9 text-xs font-bold text-textMain bg-panel border border-borderMain rounded hover:border-primary hover:text-primary transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             title="Download Full Differential Expression Table (CSV)"
           >
             <svg
@@ -471,33 +533,41 @@ export default function ConditionsDE() {
 
       <div className="flex gap-4 h-[350px] shrink-0">
         <div className="w-1/2 bg-panel border border-borderLight shadow-sm rounded p-4 flex flex-col relative">
-          <h3 className="font-bold text-textMain text-center mb-1">
-            Pairwise Volcano Plot
-          </h3>
-          <div className="flex-1 min-h-0">
-            {volcanoPlot ? (
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="font-bold text-textMain text-sm">
+              Differential Expression
+            </h3>
+            <div className="flex bg-app border border-borderMain rounded overflow-hidden shadow-sm">
+              <button
+                onClick={() => setPlotType("volcano")}
+                className={`px-3 py-1 text-xs font-bold transition-colors ${
+                  plotType === "volcano"
+                    ? "bg-primary text-textInverse"
+                    : "text-textMain hover:bg-borderLight"
+                }`}
+              >
+                Volcano Plot
+              </button>
+              <button
+                onClick={() => setPlotType("ma")}
+                className={`px-3 py-1 text-xs font-bold transition-colors ${
+                  plotType === "ma"
+                    ? "bg-primary text-textInverse"
+                    : "text-textMain hover:bg-borderLight"
+                }`}
+              >
+                MA Plot
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 mt-2">
+            {plotConfig ? (
               <Plot
-                data={volcanoPlot}
-                layout={{
-                  autosize: true,
-                  xaxis: {
-                    title: "Log2 Fold Change",
-                    zeroline: true,
-                    zerolinecolor: themeColors.border,
-                  },
-                  yaxis: {
-                    title: "-Log10(Adj. P-Value)",
-                    zeroline: true,
-                    zerolinecolor: themeColors.border,
-                  },
-                  showlegend: false,
-                  margin: { l: 50, r: 20, t: 10, b: 40 },
-                  paper_bgcolor: themeColors.paper,
-                  plot_bgcolor: themeColors.paper,
-                  font: { color: themeColors.label },
-                }}
+                data={plotConfig.traces}
+                layout={plotConfig.layout}
                 useResizeHandler={true}
                 style={{ width: "100%", height: "100%" }}
+                config={{ displayModeBar: true }}
               />
             ) : (
               <div className="flex justify-center items-center h-full text-textMuted">
