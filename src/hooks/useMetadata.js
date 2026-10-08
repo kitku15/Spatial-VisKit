@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { APP_MODE, API_BASE_URL } from "../config/config";
 
-export function useMetadata() {
+export function useMetadata(dataUrl) {
   const [datasetConfig, setDatasetConfig] = useState(null);
   const [allColumns, setAllColumns] = useState([]);
   const [clusterMap, setClusterMap] = useState({});
@@ -18,9 +18,15 @@ export function useMetadata() {
   const [appliedEmbedding, setAppliedEmbedding] = useState("");
 
   useEffect(() => {
+    if (!dataUrl) return;
+
     async function fetchZarrMetadata() {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/metadata`);
+        const params = new URLSearchParams(window.location.search);
+        const configB64 = params.get("config") || "";
+        const url = `${API_BASE_URL}/api/metadata?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`;
+
+        const response = await fetch(url);
         const data = await response.json();
 
         setDatasetConfig(data);
@@ -87,7 +93,7 @@ export function useMetadata() {
       }
     }
     fetchZarrMetadata();
-  }, []);
+  }, [dataUrl]);
 
   const availableR = useMemo(() => {
     if (APP_MODE !== "full" || Object.keys(clusterMap).length === 0) return [];

@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Vitessce } from "vitessce";
-import { API_BASE_URL, DATA_DIR } from "../../config/config";
 
 export default function VitessceSpatialCCC({
   selectedSlide,
@@ -12,24 +11,27 @@ export default function VitessceSpatialCCC({
   layoutMode,
 }) {
   const spatialKey = datasetConfig?.spatial_key || "global";
-  const zarrDir = `data/${datasetConfig?.zarr_filename}`;
+  const dataUrl = new URLSearchParams(window.location.search)
+    .get("data")
+    ?.replace(/\/$/, "");
+  const zarrUrl = `${dataUrl}/${datasetConfig?.zarr_filename}`;
   const isLR = Boolean(ligand && receptor);
 
   const config = useMemo(() => {
-    if (!selectedInteraction || !datasetConfig) return null;
+    if (!selectedInteraction || !datasetConfig || !dataUrl) return null;
 
     let embeddingKey = `obsm/${spatialKey}`;
     let segmentationsFile =
       selectedSample !== "All"
-        ? `${DATA_DIR}/segmentations/segmentations_${selectedSample}.json`
+        ? `${dataUrl}/aux_data/segmentations/segmentations_${selectedSample}.json`
         : selectedSlide !== "All"
-          ? `${DATA_DIR}/segmentations/segmentations_Slide_${selectedSlide}.json`
-          : `${DATA_DIR}/segmentations/segmentations.json`;
+          ? `${dataUrl}/aux_data/segmentations/segmentations_Slide_${selectedSlide}.json`
+          : `${dataUrl}/aux_data/segmentations/segmentations.json`;
 
     const filesScore = [
       {
         fileType: "anndata-cells.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: {
           mappings: { current_view: { key: embeddingKey, dims: [0, 1] } },
         },
@@ -37,7 +39,7 @@ export default function VitessceSpatialCCC({
       },
       {
         fileType: "anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: {
           obsFeatureColumns: [{ path: `obs/${selectedInteraction}` }],
         },
@@ -45,7 +47,7 @@ export default function VitessceSpatialCCC({
       },
       {
         fileType: "obsSets.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: [
           { name: "Sample ID", path: "obs/sample_id" },
           { name: "Slide ID", path: "obs/slide_id" },
@@ -54,7 +56,7 @@ export default function VitessceSpatialCCC({
       },
       {
         fileType: "obsSegmentations.json",
-        url: `${API_BASE_URL}/${segmentationsFile}`,
+        url: segmentationsFile,
         coordinationValues: { obsType: "cell" },
       },
     ];
@@ -62,7 +64,7 @@ export default function VitessceSpatialCCC({
     const filesGene = [
       {
         fileType: "anndata-cells.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: {
           mappings: { current_view: { key: embeddingKey, dims: [0, 1] } },
         },
@@ -70,13 +72,13 @@ export default function VitessceSpatialCCC({
       },
       {
         fileType: "obsFeatureMatrix.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: { path: "X" },
         coordinationValues: { obsType: "cell" },
       },
       {
         fileType: "obsSets.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: [
           { name: "Sample ID", path: "obs/sample_id" },
           { name: "Slide ID", path: "obs/slide_id" },
@@ -85,7 +87,7 @@ export default function VitessceSpatialCCC({
       },
       {
         fileType: "obsSegmentations.json",
-        url: `${API_BASE_URL}/${segmentationsFile}`,
+        url: segmentationsFile,
         coordinationValues: { obsType: "cell" },
       },
     ];
@@ -307,7 +309,8 @@ export default function VitessceSpatialCCC({
     receptor,
     datasetConfig,
     spatialKey,
-    zarrDir,
+    dataUrl,
+    zarrUrl,
     layoutMode,
     isLR,
   ]);

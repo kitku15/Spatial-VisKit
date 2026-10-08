@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Vitessce } from "vitessce";
-import { API_BASE_URL, DATA_DIR, largeColorPalette } from "../../config/config";
+import { API_BASE_URL, largeColorPalette } from "../../config/config";
 
 const hexToRgb = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -31,30 +31,37 @@ export default function VitessceTF({
   const spatialKey = datasetConfig?.spatial_key || "global";
   const dotSize = datasetConfig?.vitessce_dot_size || 2;
 
+  const dataUrl = new URLSearchParams(window.location.search)
+    .get("data")
+    ?.replace(/\/$/, "");
+
   // Safe fallback just in case the backend variable is missing
   const tfFallback = datasetConfig?.zarr_filename?.replace(
     "_web.zarr",
     "_tf_web.zarr",
   );
-  const zarrDir = `data/${datasetConfig?.zarr_filename}`;
-  const tfZarrDir = `data/${datasetConfig?.tf_zarr_filename || tfFallback}`;
+  const zarrUrl = `${dataUrl}/${datasetConfig?.zarr_filename}`;
+  const tfZarrUrl = `${dataUrl}/${datasetConfig?.tf_zarr_filename || tfFallback}`;
 
   const [obsData, setObsData] = useState(null);
 
   useEffect(() => {
+    if (!dataUrl) return;
+    const params = new URLSearchParams(window.location.search);
+    const configB64 = params.get("config") || "";
     Promise.all([
-      fetch(`${API_BASE_URL}/api/metadata`).then((res) =>
-        res.ok ? res.json() : Promise.reject(res),
-      ),
-      fetch(`${API_BASE_URL}/api/obs`).then((res) =>
-        res.ok ? res.json() : Promise.reject(res),
-      ),
+      fetch(
+        `${API_BASE_URL}/api/metadata?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+      ).then((res) => (res.ok ? res.json() : Promise.reject(res))),
+      fetch(
+        `${API_BASE_URL}/api/obs?data_url=${encodeURIComponent(dataUrl)}`,
+      ).then((res) => (res.ok ? res.json() : Promise.reject(res))),
     ])
       .then(([, obs]) => {
         setObsData(obs);
       })
       .catch((err) => console.warn("Failed to load TF metadata/obs:", err));
-  }, []);
+  }, [dataUrl]);
 
   const internalColName = useMemo(() => {
     if (activeCategory === "MuSpAn ROI") return "muspan_region";
@@ -75,14 +82,14 @@ export default function VitessceTF({
   }, [obsData, internalColName, activeCategory]);
 
   const config = useMemo(() => {
-    if (clusterLabels.length === 0 || !datasetConfig) return null;
+    if (clusterLabels.length === 0 || !datasetConfig || !dataUrl) return null;
 
     const segmentationsFile =
       selectedSample !== "All"
-        ? `${DATA_DIR}/segmentations/segmentations_${selectedSample}.json`
+        ? `${dataUrl}/aux_data/segmentations/segmentations_${selectedSample}.json`
         : selectedSlide !== "All"
-          ? `${DATA_DIR}/segmentations/segmentations_Slide_${selectedSlide}.json`
-          : `${DATA_DIR}/segmentations/segmentations.json`;
+          ? `${dataUrl}/aux_data/segmentations/segmentations_Slide_${selectedSlide}.json`
+          : `${dataUrl}/aux_data/segmentations/segmentations.json`;
 
     const obsSetColor = clusterLabels.map((label, i) => {
       if (activeCategory === "MuSpAn ROI") {
@@ -132,41 +139,41 @@ export default function VitessceTF({
       // 1. Locations from Main Zarr
       {
         fileType: "obsLocations.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: { path: `obsm/${spatialKey}` },
         coordinationValues: { obsType: "cell" },
       },
       // 2. Spatial Embedding from Main Zarr
       {
         fileType: "obsEmbedding.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: { path: `obsm/${spatialKey}` },
         coordinationValues: { obsType: "cell", embeddingType: "spatial_view" },
       },
       // 3. UMAP Embedding from Main Zarr
       {
         fileType: "obsEmbedding.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: { path: `obsm/${embedding}` },
         coordinationValues: { obsType: "cell", embeddingType: "current_view" },
       },
       // 4. Labels from Main Zarr
       {
         fileType: "obsSets.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: sortedObsSets,
         coordinationValues: { obsType: "cell" },
       },
       // 5. Segmentations from JSON
       {
         fileType: "obsSegmentations.json",
-        url: `${API_BASE_URL}/${segmentationsFile}`,
+        url: segmentationsFile,
         coordinationValues: { obsType: "cell" },
       },
       // 6. TF Matrix from TF Zarr
       {
         fileType: "obsFeatureMatrix.anndata.zarr",
-        url: `${API_BASE_URL}/${tfZarrDir}/`,
+        url: `${tfZarrUrl}/`,
         options: { path: "X" },
         coordinationValues: { obsType: "cell" },
       },
@@ -314,8 +321,9 @@ export default function VitessceTF({
     activeCategory,
     datasetConfig,
     spatialKey,
-    zarrDir,
-    tfZarrDir,
+    dataUrl,
+    zarrUrl,
+    tfZarrUrl,
     customColors,
     dotSize,
     dynamicAnnotations,

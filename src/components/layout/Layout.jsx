@@ -3,23 +3,41 @@ import { NavLink } from "react-router-dom";
 import { APP_MODE, PROJECT_TITLE } from "../../config/config";
 
 const exploreLinks = [
-  { to: "/interactive", label: "Interactive Explorer" },
-  { to: "/annotation", label: "Cell Type Annotation" },
-  { to: "/composition", label: "Composition Analysis" },
-  { to: "/multiplex", label: "Multiplex Overlay" },
-  { to: "/export", label: "Data Export & Filtering" },
+  {
+    to: `/interactive${window.location.search}`,
+    label: "Interactive Explorer",
+  },
+  { to: `/annotation${window.location.search}`, label: "Cell Type Annotation" },
+  {
+    to: `/composition${window.location.search}`,
+    label: "Composition Analysis",
+  },
+  { to: `/multiplex${window.location.search}`, label: "Multiplex Overlay" },
+  { to: `/export${window.location.search}`, label: "Data Export & Filtering" },
 ];
 
 const analysisLinks = [
-  { to: "/qc", label: "Quality Control" },
-  { to: "/stats", label: "Spatial Statistics" },
-  { to: "/tf", label: "Transcription Factor Enrichment" },
-  { to: "/ccc", label: "Cell-Cell Communication" },
-  { to: "/spatial-ccc", label: "Spatial CCC" },
-  { to: "/de-analysis", label: "Cell Type DE Analysis" },
-  { to: "/conditions-de", label: "Conditions DE Analysis" },
-  { to: "/gsea", label: "GSEA" },
-  { to: "/conditions-causal", label: "Conditions CCC" },
+  { to: `/qc${window.location.search}`, label: "Quality Control" },
+  { to: `/stats${window.location.search}`, label: "Spatial Statistics" },
+  {
+    to: `/tf${window.location.search}`,
+    label: "Transcription Factor Enrichment",
+  },
+  { to: `/ccc${window.location.search}`, label: "Cell-Cell Communication" },
+  { to: `/spatial-ccc${window.location.search}`, label: "Spatial CCC" },
+  {
+    to: `/de-analysis${window.location.search}`,
+    label: "Cell Type DE Analysis",
+  },
+  {
+    to: `/conditions-de${window.location.search}`,
+    label: "Conditions DE Analysis",
+  },
+  { to: `/gsea${window.location.search}`, label: "GSEA" },
+  {
+    to: `/conditions-causal${window.location.search}`,
+    label: "Conditions CCC",
+  },
 ];
 
 export default function Layout({

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import VitessceTF from "../components/vitessce/VitessceTF";
-import { API_BASE_URL, DATA_DIR, themeColors } from "../config/config";
+import { API_BASE_URL, themeColors } from "../config/config";
 import InfoModal from "../components/ui/InfoModal";
 import { tabInfo } from "../constants/infoHelper";
 
@@ -38,7 +38,16 @@ export default function TranscriptionFactor({
   useEffect(() => {
     async function fetchMetadata() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/metadata`);
+        const dataUrl = new URLSearchParams(window.location.search)
+          .get("data")
+          ?.replace(/\/$/, "");
+        const configB64 =
+          new URLSearchParams(window.location.search).get("config") || "";
+        if (!dataUrl) return;
+
+        const res = await fetch(
+          `${API_BASE_URL}/api/metadata?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+        );
         if (!res.ok) return;
         const data = await res.json();
         setHierarchy(data.hierarchy);
@@ -69,9 +78,12 @@ export default function TranscriptionFactor({
   useEffect(() => {
     async function fetchHeatmap() {
       try {
-        const res = await fetch(
-          `${API_BASE_URL}/${DATA_DIR}/tf_heatmap_data.json`,
-        );
+        const dataUrl = new URLSearchParams(window.location.search)
+          .get("data")
+          ?.replace(/\/$/, "");
+        if (!dataUrl) return;
+
+        const res = await fetch(`${dataUrl}/aux_data/tf_heatmap_data.json`);
         if (!res.ok) return;
         const data = await res.json();
         setHeatmapData(data);

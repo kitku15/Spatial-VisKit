@@ -4,7 +4,7 @@ import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
 import InfoModal from "../components/ui/InfoModal";
 import { tabInfo } from "../constants/infoHelper";
-import { themeColors, DATA_DIR, API_BASE_URL } from "../config/config";
+import { themeColors, API_BASE_URL } from "../config/config";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -102,12 +102,23 @@ export default function ConditionsDE() {
   useEffect(() => {
     async function initData() {
       try {
+        const dataUrl = new URLSearchParams(window.location.search)
+          .get("data")
+          ?.replace(/\/$/, "");
+        const configB64 =
+          new URLSearchParams(window.location.search).get("config") || "";
+        if (!dataUrl) return;
+
         const [metaRes, genesRes, clustersRes] = await Promise.all([
           fetch(
-            `${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/conditions_de_metadata.json`,
+            `${dataUrl}/aux_data/conditions_de_analysis/conditions_de_metadata.json`,
           ),
-          fetch(`${API_BASE_URL}/api/genes`),
-          fetch(`${API_BASE_URL}/api/obs`),
+          fetch(
+            `${API_BASE_URL}/api/genes?data_url=${encodeURIComponent(dataUrl)}`,
+          ),
+          fetch(
+            `${API_BASE_URL}/api/obs?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+          ),
         ]);
 
         if (!metaRes.ok || !genesRes.ok || !clustersRes.ok) {
@@ -139,9 +150,13 @@ export default function ConditionsDE() {
 
   useEffect(() => {
     if (!selectedCellType || !selectedComparison) return;
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    if (!dataUrl) return;
 
     fetch(
-      `${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/${selectedCellType}_comparison_${selectedComparison}.json`,
+      `${dataUrl}/aux_data/conditions_de_analysis/${selectedCellType}_comparison_${selectedComparison}.json`,
     )
       .then((r) => {
         if (!r.ok) throw new Error("Volcano data fetch failed");
@@ -151,7 +166,7 @@ export default function ConditionsDE() {
       .catch(() => setVolcanoData(null));
 
     d3.csv(
-      `${API_BASE_URL}/${DATA_DIR}/conditions_de_analysis/summary_${selectedCellType}.csv`,
+      `${dataUrl}/aux_data/conditions_de_analysis/summary_${selectedCellType}.csv`,
     )
       .then((data) => {
         const compRow = data.find((d) => d.Comparison === selectedComparison);
@@ -191,9 +206,16 @@ export default function ConditionsDE() {
   }, [selectedCellType, selectedComparison, availableGenes]);
 
   useEffect(() => {
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    if (!dataUrl) return;
+
     panelGenes.forEach((g) => {
       if (g && !geneExpressions[g.safe]) {
-        fetch(`${API_BASE_URL}/api/expression/${encodeURIComponent(g.safe)}`)
+        fetch(
+          `${API_BASE_URL}/api/expression/${encodeURIComponent(g.safe)}?data_url=${encodeURIComponent(dataUrl)}`,
+        )
           .then((r) => {
             if (!r.ok) throw new Error("Expression fetch failed");
             return r.json();

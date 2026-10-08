@@ -3,7 +3,7 @@ import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import InfoModal from "../components/ui/InfoModal";
 import { tabInfo } from "../constants/infoHelper";
-import { themeColors, DATA_DIR, API_BASE_URL } from "../config/config";
+import { themeColors } from "../config/config";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -20,9 +20,14 @@ export default function QualityControl() {
   useEffect(() => {
     async function fetchData() {
       try {
+        const dataUrl = new URLSearchParams(window.location.search)
+          .get("data")
+          ?.replace(/\/$/, "");
+        if (!dataUrl) return;
+
         const [threshRes, histRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/${DATA_DIR}/qc/qc_thresholds.json`),
-          fetch(`${API_BASE_URL}/${DATA_DIR}/qc/qc_histograms.json`),
+          fetch(`${dataUrl}/aux_data/qc/qc_thresholds.json`),
+          fetch(`${dataUrl}/aux_data/qc/qc_histograms.json`),
         ]);
 
         if (threshRes.ok) {

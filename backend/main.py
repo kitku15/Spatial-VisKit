@@ -1,6 +1,5 @@
 import io
 import logging
-import os
 from contextlib import asynccontextmanager
 
 import numpy as np
@@ -10,16 +9,17 @@ import zarr
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from fastapi.staticfiles import StaticFiles
 
 import hashlib
 import json
 import asyncio
+import base64
+import requests
 from concurrent.futures import ProcessPoolExecutor
 from cachetools import TTLCache
 import gseapy as gp
 
-from store import store
+from store import store_manager
 from schemas import ExportRequest, GSEARequest
 
 # Cache up to 50 unique queries for 1 hour to prevent redundant calculations
@@ -28,18 +28,25 @@ gsea_cache = TTLCache(maxsize=50, ttl=3600)
 executor = ProcessPoolExecutor(max_workers=2)
 
 
-def _run_gsea_task(params_dict):
+def _run_gsea_task(params_dict, data_url):
     ct = params_dict["celltype"]
     comp = params_dict["comparison"]
     db = params_dict["database"]
 
-    pq_path = os.path.join(
-        store.module_dir, "aux_data", "gsea", "rankings", f"{ct}_{comp}.parquet"
-    )
-    if not os.path.exists(pq_path):
-        raise ValueError(f"Ranking file not found: {pq_path}")
+    pq_path = f"{data_url.rstrip('/')}/aux_data/gsea/rankings/{ct}_{comp}.parquet"
 
-    df = pd.read_parquet(pq_path)
+    try:
+        # Fetch file via standard HTTP request, load into memory buffer, then read.
+        # This prevents Cloudflare R2 from blocking Pandas' native fsspec HTTP calls.
+        resp = requests.get(pq_path)
+        if resp.status_code != 200:
+            raise ValueError(f"HTTP {resp.status_code} - File missing or blocked")
+
+        import io
+
+        df = pd.read_parquet(io.BytesIO(resp.content))
+    except Exception as e:
+        raise ValueError(f"Ranking file not found at {pq_path}. Error: {str(e)}")
     rnk = df[["names", "logfoldchanges"]].copy()
     rnk["names"] = rnk["names"].astype(str).str.upper()
     rnk = rnk.sort_values(by="logfoldchanges", ascending=False)
@@ -101,7 +108,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    store.load_data()
+    # App starts stateless. Data is loaded dynamically when requested.
     yield
 
 
@@ -115,43 +122,77 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-if os.path.exists(store.module_dir):
-    app.mount("/data", StaticFiles(directory=store.module_dir), name="data")
+
+def _get_store(data_url: str):
+    if not data_url:
+        raise HTTPException(status_code=400, detail="Missing data_url parameter")
+    try:
+        s = store_manager.get_store(data_url)
+        if s.obs_df is None or s.var_df is None or s.zarr_store is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Data failed to load from URL. Check backend logs.",
+            )
+        return s
+    except Exception as e:
+        logger.error(f"Error in _get_store: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-def _ensure_loaded():
-    if store.obs_df is None or store.var_df is None or store.zarr_store is None:
-        raise HTTPException(status_code=500, detail="Data not loaded.")
+def _get_effective_config(store, config_b64: str = None) -> dict:
+    base_cfg = {
+        "slide_col": store.slide_col,
+        "sample_col": store.sample_col,
+        "spatial_key": store.spatial_key,
+        "vitessce_dot_size": store.vitessce_dot_size,
+        "primary_annotation": store.primary_annotation,
+        "dynamic_annotations": store.dynamic_annotations,
+        "extra_obs_sets": store.extra_obs_sets,
+        "has_segmentations": store.has_segmentations,
+        "zarr_filename": store.zarr_filename_actual,
+        "tf_zarr_filename": store.tf_zarr_filename,
+        "available_embeddings": store.available_embeddings,
+    }
+    if config_b64:
+        try:
+            override = json.loads(base64.b64decode(config_b64).decode("utf-8"))
+            base_cfg.update(override)
+        except Exception as e:
+            logger.warning(f"Failed to parse config_b64: {e}")
+    return base_cfg
 
 
 @app.get("/api/metadata")
-def get_metadata():
-    _ensure_loaded()
+def get_metadata(data_url: str, config_b64: str = None):
+    store = _get_store(data_url)
+    eff_cfg = _get_effective_config(store, config_b64)
+
+    slide_col = eff_cfg.get("slide_col")
+    sample_col = eff_cfg.get("sample_col")
 
     hierarchy = {}
     if (
-        store.slide_col in store.obs_df.columns
-        and store.sample_col in store.obs_df.columns
+        slide_col
+        and slide_col in store.obs_df.columns
+        and sample_col
+        and sample_col in store.obs_df.columns
     ):
-        for slide in store.obs_df[store.slide_col].dropna().unique():
+        for slide in store.obs_df[slide_col].dropna().unique():
             samples = (
-                store.obs_df[store.obs_df[store.slide_col] == slide][store.sample_col]
+                store.obs_df[store.obs_df[slide_col] == slide][sample_col]
                 .dropna()
                 .unique()
                 .tolist()
             )
             hierarchy[str(slide)] = [str(s) for s in samples]
-    elif store.slide_col in store.obs_df.columns:
-        for slide in store.obs_df[store.slide_col].dropna().unique():
+    elif slide_col and slide_col in store.obs_df.columns:
+        for slide in store.obs_df[slide_col].dropna().unique():
             hierarchy[str(slide)] = ["All"]
     else:
         hierarchy = {"All": ["All"]}
 
     obsm_keys = (
         list(store.zarr_store["obsm"].keys()) if "obsm" in store.zarr_store else []
-    )
-    zarr_file = store.zarr_filename_actual or (
-        os.path.basename(store.zarr_path) if store.zarr_path else ""
     )
 
     return {
@@ -160,27 +201,19 @@ def get_metadata():
         "obs_columns": list(store.obs_df.columns),
         "obsm_keys": obsm_keys,
         "hierarchy": hierarchy,
-        "zarr_filename": zarr_file,
-        "tf_zarr_filename": store.tf_zarr_filename,
-        "spatial_key": store.spatial_key,
-        "vitessce_dot_size": store.vitessce_dot_size,
-        "primary_annotation": store.primary_annotation,
-        "available_embeddings": store.available_embeddings,
-        "dynamic_annotations": store.dynamic_annotations,
-        "extra_obs_sets": store.extra_obs_sets,
-        "has_segmentations": store.has_segmentations,
+        **eff_cfg,
     }
 
 
 @app.get("/api/genes")
-def get_genes():
-    _ensure_loaded()
+def get_genes(data_url: str):
+    store = _get_store(data_url)
     return [{"original": str(g), "safe": str(g)} for g in store.var_df.index]
 
 
 @app.get("/api/expression/{gene_name:path}")
-def get_expression(gene_name: str):
-    _ensure_loaded()
+def get_expression(gene_name: str, data_url: str):
+    store = _get_store(data_url)
     try:
         if gene_name not in store.var_df.index:
             raise HTTPException(status_code=404, detail="Gene not found.")
@@ -251,8 +284,8 @@ def get_expression(gene_name: str):
 
 
 @app.get("/api/obs")
-def get_obs():
-    _ensure_loaded()
+def get_obs(data_url: str):
+    store = _get_store(data_url)
 
     ignore_cols = {
         "cell_id",
@@ -275,27 +308,33 @@ def get_obs():
 
 
 @app.get("/api/locations")
-def get_locations():
-    _ensure_loaded()
-    if not store.spatial_key:
+def get_locations(data_url: str, config_b64: str = None):
+    store = _get_store(data_url)
+    eff_cfg = _get_effective_config(store, config_b64)
+    spatial_key = eff_cfg.get("spatial_key")
+
+    if not spatial_key:
         raise HTTPException(
             status_code=500, detail="No spatial coordinates found in obsm."
         )
-    if store.spatial_key not in store.zarr_store["obsm"]:
+    if spatial_key not in store.zarr_store["obsm"]:
         raise HTTPException(
-            status_code=500, detail=f"Key {store.spatial_key} not found in obsm."
+            status_code=500, detail=f"Key {spatial_key} not found in obsm."
         )
 
-    coords = store.zarr_store["obsm"][store.spatial_key][:]
+    coords = store.zarr_store["obsm"][spatial_key][:]
+
+    slide_col = eff_cfg.get("slide_col")
+    sample_col = eff_cfg.get("sample_col")
 
     slides = (
-        store.obs_df[store.slide_col].tolist()
-        if store.slide_col in store.obs_df.columns
+        store.obs_df[slide_col].tolist()
+        if slide_col and slide_col in store.obs_df.columns
         else ["All"] * len(store.obs_df)
     )
     samples = (
-        store.obs_df[store.sample_col].tolist()
-        if store.sample_col in store.obs_df.columns
+        store.obs_df[sample_col].tolist()
+        if sample_col and sample_col in store.obs_df.columns
         else ["All"] * len(store.obs_df)
     )
 
@@ -309,8 +348,9 @@ def get_locations():
 
 
 @app.get("/api/composition")
-def get_composition():
-    _ensure_loaded()
+def get_composition(data_url: str, config_b64: str = None):
+    store = _get_store(data_url)
+    eff_cfg = _get_effective_config(store, config_b64)
 
     ignore_cols = {
         "cell_id",
@@ -339,17 +379,18 @@ def get_composition():
 
     composition = {"All_All": get_counts(store.obs_df)}
 
-    if store.slide_col and store.slide_col in store.obs_df.columns:
-        for slide in store.obs_df[store.slide_col].dropna().unique():
-            slide_mask = store.obs_df[store.slide_col] == slide
+    slide_col = eff_cfg.get("slide_col")
+    sample_col = eff_cfg.get("sample_col")
+
+    if slide_col and slide_col in store.obs_df.columns:
+        for slide in store.obs_df[slide_col].dropna().unique():
+            slide_mask = store.obs_df[slide_col] == slide
             composition[f"{slide}_All"] = get_counts(store.obs_df[slide_mask])
 
-            if store.sample_col and store.sample_col in store.obs_df.columns:
-                samples = store.obs_df[slide_mask][store.sample_col].dropna().unique()
+            if sample_col and sample_col in store.obs_df.columns:
+                samples = store.obs_df[slide_mask][sample_col].dropna().unique()
                 for sample in samples:
-                    sample_mask = slide_mask & (
-                        store.obs_df[store.sample_col] == sample
-                    )
+                    sample_mask = slide_mask & (store.obs_df[sample_col] == sample)
                     composition[f"{slide}_{sample}"] = get_counts(
                         store.obs_df[sample_mask]
                     )
@@ -358,8 +399,8 @@ def get_composition():
 
 
 @app.get("/api/sankey")
-def get_sankey(col_a: str, col_b: str):
-    _ensure_loaded()
+def get_sankey(col_a: str, col_b: str, data_url: str):
+    store = _get_store(data_url)
     if col_a not in store.obs_df.columns or col_b not in store.obs_df.columns:
         raise HTTPException(
             status_code=400, detail=f"Columns {col_a} or {col_b} not found."
@@ -391,8 +432,8 @@ def get_sankey(col_a: str, col_b: str):
 
 
 @app.post("/api/export")
-def export_data(req: ExportRequest):
-    _ensure_loaded()
+def export_data(req: ExportRequest, data_url: str):
+    store = _get_store(data_url)
 
     mask = pd.Series(True, index=store.obs_df.index)
     for f in req.filters:
@@ -462,11 +503,12 @@ def export_data(req: ExportRequest):
 
 
 @app.post("/api/gsea")
-async def run_gsea_endpoint(req: GSEARequest):
-    _ensure_loaded()
+async def run_gsea_endpoint(req: GSEARequest, data_url: str):
+    # Validate the data_url exists, but we don't need the store object itself
+    _get_store(data_url)
 
     req_dict = req.dict() if hasattr(req, "dict") else req.model_dump()
-    param_str = json.dumps(req_dict, sort_keys=True)
+    param_str = json.dumps(req_dict, sort_keys=True) + data_url
     cache_key = hashlib.md5(param_str.encode()).hexdigest()
 
     if cache_key in gsea_cache:
@@ -474,7 +516,7 @@ async def run_gsea_endpoint(req: GSEARequest):
 
     loop = asyncio.get_running_loop()
     try:
-        res = await loop.run_in_executor(executor, _run_gsea_task, req_dict)
+        res = await loop.run_in_executor(executor, _run_gsea_task, req_dict, data_url)
         gsea_cache[cache_key] = res
         return res
     except Exception as e:

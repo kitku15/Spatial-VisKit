@@ -11,7 +11,16 @@ export default function ColorSettings({ customColors, setCustomColors }) {
   const [selectedCol, setSelectedCol] = useState("");
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/obs`)
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    const configB64 =
+      new URLSearchParams(window.location.search).get("config") || "";
+    if (!dataUrl) return;
+
+    fetch(
+      `${API_BASE_URL}/api/obs?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+    )
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
         return res.json();

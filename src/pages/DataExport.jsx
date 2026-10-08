@@ -16,13 +16,20 @@ export default function DataExport() {
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    const configB64 =
+      new URLSearchParams(window.location.search).get("config") || "";
+    if (!dataUrl) return;
+
     Promise.all([
-      fetch(`${API_BASE_URL}/api/obs`).then((res) =>
-        res.ok ? res.json() : Promise.reject(res),
-      ),
-      fetch(`${API_BASE_URL}/api/genes`).then((res) =>
-        res.ok ? res.json() : Promise.reject(res),
-      ),
+      fetch(
+        `${API_BASE_URL}/api/obs?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+      ).then((res) => (res.ok ? res.json() : Promise.reject(res))),
+      fetch(
+        `${API_BASE_URL}/api/genes?data_url=${encodeURIComponent(dataUrl)}`,
+      ).then((res) => (res.ok ? res.json() : Promise.reject(res))),
     ])
       .then(([obsData, genesData]) => {
         setMetadataMap(obsData);
@@ -115,18 +122,28 @@ export default function DataExport() {
   };
 
   const handleExport = async () => {
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    const configB64 =
+      new URLSearchParams(window.location.search).get("config") || "";
+    if (!dataUrl) return;
+
     setIsExporting(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/export`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filters,
-          obs_columns: selectedColumns,
-          genes: selectedGenes,
-          lasso_cells: lassoCells,
-        }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/export?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filters,
+            obs_columns: selectedColumns,
+            genes: selectedGenes,
+            lasso_cells: lassoCells,
+          }),
+        },
+      );
 
       if (!response.ok) {
         const err = await response.json();

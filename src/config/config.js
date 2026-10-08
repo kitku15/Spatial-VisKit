@@ -1,13 +1,24 @@
 // ./src/config.js
 
 // =========================================================
-// THESE ARE CONTROLLED BY YOUR ROOT .env FILE
+// THESE ARE CONTROLLED BY URL PARAMS OR FALLBACK TO .env
 // =========================================================
-export const APP_MODE = import.meta.env.VITE_APP_MODE || "full";
+const urlParams = new URLSearchParams(window.location.search);
+
+export const APP_MODE =
+  urlParams.get("mode") ||
+  sessionStorage.getItem("byod_mode") ||
+  import.meta.env.VITE_APP_MODE ||
+  "full";
+
+export const PROJECT_TITLE =
+  urlParams.get("title") ||
+  sessionStorage.getItem("byod_title") ||
+  import.meta.env.VITE_PROJECT_TITLE ||
+  "Spatial Transcriptomics Explorer";
+
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
-export const PROJECT_TITLE =
-  import.meta.env.VITE_PROJECT_TITLE || "Spatial Transcriptomics Explorer";
 
 // =========================================================
 // PIPELINE CONVENTIONS (Do not change)

@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Vitessce } from "vitessce";
-import { API_BASE_URL, DATA_DIR } from "../../config/config";
 
 const hexToRgb = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -19,16 +18,19 @@ export default function VitessceCCC({
   const spatialKey = datasetConfig?.spatial_key || "global";
   const primaryAnnotation =
     datasetConfig?.primary_annotation || "Final_Annotation";
-  const zarrDir = `data/${datasetConfig?.zarr_filename}`;
+  const dataUrl = new URLSearchParams(window.location.search)
+    .get("data")
+    ?.replace(/\/$/, "");
+  const zarrUrl = `${dataUrl}/${datasetConfig?.zarr_filename}`;
 
   const config = useMemo(() => {
-    if (!datasetConfig) return null;
+    if (!datasetConfig || !dataUrl) return null;
 
     const spatialEmbeddingKey = `obsm/${spatialKey}`;
     const segmentationsFile =
       selectedMicroenv === "All"
-        ? `${DATA_DIR}/segmentations/segmentations.json`
-        : `${DATA_DIR}/segmentations/segmentations_microenv_${selectedMicroenv}.json`;
+        ? `${dataUrl}/aux_data/segmentations/segmentations.json`
+        : `${dataUrl}/aux_data/segmentations/segmentations_microenv_${selectedMicroenv}.json`;
 
     const cellTypeName = "Cell Annotation";
     const cellTypePath = `obs/${primaryAnnotation}`;
@@ -42,7 +44,7 @@ export default function VitessceCCC({
     const files = [
       {
         fileType: "anndata-cells.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: {
           mappings: {
             spatial_view: { key: spatialEmbeddingKey, dims: [0, 1] },
@@ -52,7 +54,7 @@ export default function VitessceCCC({
       },
       {
         fileType: "obsSets.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: [
           { name: cellTypeName, path: cellTypePath },
           { name: "Microenvironment", path: "obs/spatial_microenvironment" },
@@ -61,13 +63,13 @@ export default function VitessceCCC({
       },
       {
         fileType: "obsLocations.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: { path: spatialEmbeddingKey },
         coordinationValues: { obsType: "cell" },
       },
       {
         fileType: "obsSegmentations.json",
-        url: `${API_BASE_URL}/${segmentationsFile}`,
+        url: segmentationsFile,
         coordinationValues: { obsType: "cell" },
       },
     ];
@@ -126,7 +128,8 @@ export default function VitessceCCC({
     datasetConfig,
     spatialKey,
     primaryAnnotation,
-    zarrDir,
+    dataUrl,
+    zarrUrl,
   ]);
 
   if (!config)

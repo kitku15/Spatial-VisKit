@@ -9,7 +9,6 @@ import InfoModal from "../ui/InfoModal";
 import { tabInfo } from "../../constants/infoHelper";
 import {
   API_BASE_URL,
-  DATA_DIR,
   largeColorPalette,
   themeColors,
 } from "../../config/config";
@@ -47,7 +46,11 @@ export default function VitessceViewer({
   );
   const spatialKey = datasetConfig?.spatial_key || "global";
   const dotSize = datasetConfig?.vitessce_dot_size || 2;
-  const zarrDir = `data/${datasetConfig?.zarr_filename}`;
+
+  const dataUrl = new URLSearchParams(window.location.search)
+    .get("data")
+    ?.replace(/\/$/, "");
+  const zarrUrl = `${dataUrl}/${datasetConfig?.zarr_filename}`;
 
   const [selectedSlide, setSelectedSlide] = useState("");
   const [selectedSample, setSelectedSample] = useState("");
@@ -126,9 +129,13 @@ export default function VitessceViewer({
   }, [globalUpdateSignal, handleApplyFilters]);
 
   useEffect(() => {
+    if (!dataUrl) return;
+
     async function fetchData() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/metadata`);
+        const res = await fetch(
+          `${API_BASE_URL}/api/metadata?data_url=${encodeURIComponent(dataUrl)}`,
+        );
         if (res.ok) {
           const data = await res.json();
           setHierarchy(data.hierarchy);
@@ -159,14 +166,18 @@ export default function VitessceViewer({
             });
           }
         }
-        const compRes = await fetch(`${API_BASE_URL}/api/composition`);
+        const params = new URLSearchParams(window.location.search);
+        const configB64 = params.get("config") || "";
+        const compRes = await fetch(
+          `${API_BASE_URL}/api/composition?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+        );
         if (compRes.ok) setCompositionData(await compRes.json());
       } catch (err) {
         console.warn("Could not load spatial metadata", err);
       }
     }
     fetchData();
-  }, [dynamicAnnotations, extraObsSets]);
+  }, [dynamicAnnotations, extraObsSets, dataUrl]);
 
   const handleSlideChange = (e) => {
     setSelectedSlide(e.target.value);
@@ -237,14 +248,17 @@ export default function VitessceViewer({
   }, [currentDataCounts, colorMap, hoveredSlice, clickedSlice]);
 
   const config = useMemo(() => {
-    const hasSegmentations = datasetConfig?.has_segmentations ?? false;
+    if (!dataUrl) return null;
+
+    // Bypass the backend's "false" flag and forcefully render the Polygon layout
+    const hasSegmentations = true;
     const spatialEmbeddingKey = `obsm/${spatialKey}`;
     const segmentationsFile =
       appliedFilters.sample !== "All"
-        ? `${DATA_DIR}/segmentations/segmentations_${appliedFilters.sample}.json`
+        ? `${dataUrl}/aux_data/segmentations/segmentations_${appliedFilters.sample}.json`
         : appliedFilters.slide !== "All"
-          ? `${DATA_DIR}/segmentations/segmentations_Slide_${appliedFilters.slide}.json`
-          : `${DATA_DIR}/segmentations/segmentations.json`;
+          ? `${dataUrl}/aux_data/segmentations/segmentations_Slide_${appliedFilters.slide}.json`
+          : `${dataUrl}/aux_data/segmentations/segmentations.json`;
 
     const obsSetColor = Object.keys(colorMap).map((label) => ({
       path: [appliedFilters.category, label],
@@ -262,15 +276,36 @@ export default function VitessceViewer({
       ...extraObsSets,
     ];
 
-    const activeObsSet = allObsSets.find((set) => set.name === activeCategory);
+    // STRICTLY use appliedFilters.category so the map waits for your "Update Plot" button!
+    const activeObsSet = allObsSets.find(
+      (set) => set.name === appliedFilters.category,
+    );
     const sortedObsSets = activeObsSet ? [activeObsSet] : [];
 
-    const sampleSetName =
-      extraObsSets.find((e) => e.path.toLowerCase().includes("sample"))?.name ||
-      "Sample ID";
-    const slideSetName =
-      extraObsSets.find((e) => e.path.toLowerCase().includes("slide"))?.name ||
-      "Slide ID";
+    // 2. Get the EXACT column paths from your dataset config
+    const sampleCol = datasetConfig?.sample_col || "sample_id";
+    const slideCol = datasetConfig?.slide_col || "slide_id";
+
+    // 3. Resolve exactly what Vitessce will name these sets
+    const sampleSet = extraObsSets.find(
+      (e) => e.path === `obs/${sampleCol}`,
+    ) || { name: sampleCol, path: `obs/${sampleCol}` };
+    const slideSet = extraObsSets.find((e) => e.path === `obs/${slideCol}`) || {
+      name: slideCol,
+      path: `obs/${slideCol}`,
+    };
+
+    // 4. We MUST push them into Vitessce so it can filter by them
+    if (sampleSet.name !== appliedFilters.category)
+      sortedObsSets.push(sampleSet);
+    if (slideSet.name !== appliedFilters.category) sortedObsSets.push(slideSet);
+
+    // Explicitly define the default selection. Fallback to [] instead of null so it NEVER "selects all"
+    const allLabelsForCategory = Object.keys(colorMap);
+    const defaultSelection =
+      allLabelsForCategory.length > 0
+        ? allLabelsForCategory.map((label) => [appliedFilters.category, label])
+        : [];
 
     const coordinationSpace = {
       embeddingType: { ET_UMAP: "UMAP", ET_SPATIAL: "SPATIAL_VIEW" },
@@ -293,14 +328,16 @@ export default function VitessceViewer({
         },
       },
       obsSetSelection: {
-        OSS1: clickedSlice ? [[appliedFilters.category, clickedSlice]] : null,
+        OSS1: clickedSlice
+          ? [[appliedFilters.category, clickedSlice]]
+          : defaultSelection,
       },
       obsSetFilter: {
         OSF1:
           appliedFilters.sample !== "All"
-            ? [[sampleSetName, appliedFilters.sample]]
+            ? [[sampleSet.name, appliedFilters.sample]]
             : appliedFilters.slide !== "All"
-              ? [[slideSetName, appliedFilters.slide]]
+              ? [[slideSet.name, appliedFilters.slide]]
               : null,
       },
       obsColorEncoding: { OCE1: "cellSetSelection" },
@@ -358,7 +395,7 @@ export default function VitessceViewer({
     const files = [
       {
         fileType: "anndata-cells.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: {
           mappings: {
             UMAP: { key: `obsm/${embedding}`, dims: [0, 1] },
@@ -369,13 +406,13 @@ export default function VitessceViewer({
       },
       {
         fileType: "obsSets.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: sortedObsSets,
         coordinationValues: { obsType: "cell" },
       },
       {
         fileType: "obsFeatureMatrix.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: { path: "X" },
         coordinationValues: { obsType: "cell" },
       },
@@ -384,12 +421,12 @@ export default function VitessceViewer({
     if (hasSegmentations) {
       files.push({
         fileType: "obsSegmentations.json",
-        url: `${API_BASE_URL}/${segmentationsFile}?t=${globalUpdateSignal}`,
+        url: `${segmentationsFile}?t=${globalUpdateSignal}`,
         coordinationValues: { obsType: "cell" },
       });
       files.push({
         fileType: "obsLocations.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: { path: spatialEmbeddingKey },
         coordinationValues: { obsType: "cell" },
       });
@@ -491,12 +528,12 @@ export default function VitessceViewer({
     clickedSlice,
     colorMap,
     embedding,
-    activeCategory,
     dotSize,
     dynamicAnnotations,
     extraObsSets,
     spatialKey,
-    zarrDir,
+    zarrUrl,
+    dataUrl,
     datasetConfig,
     globalUpdateSignal,
   ]);
@@ -574,9 +611,7 @@ export default function VitessceViewer({
             onClick={() =>
               setExportModalState({
                 isOpen: true,
-                viewTitle: datasetConfig?.has_segmentations
-                  ? "Spatial (Segmentations)"
-                  : "Spatial (Coordinates)",
+                viewTitle: "Spatial (Segmentations)",
                 defaultFilename: `Spatial_${appliedFilters.sample || appliedFilters.slide}`,
                 defaultBg: "#000000",
               })

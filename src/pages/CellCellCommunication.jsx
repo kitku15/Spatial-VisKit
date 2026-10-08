@@ -4,8 +4,6 @@ import {
   themeColors,
   defaultCategoryPalette,
   largeColorPalette,
-  DATA_DIR,
-  API_BASE_URL,
 } from "../config/config";
 import VitessceCCC from "../components/vitessce/VitessceCCC";
 import InfoModal from "../components/ui/InfoModal";
@@ -161,9 +159,14 @@ export default function CellCellCommunication({
   useEffect(() => {
     async function loadData() {
       try {
+        const dataUrl = new URLSearchParams(window.location.search)
+          .get("data")
+          ?.replace(/\/$/, "");
+        if (!dataUrl) return;
+
         const [edgesRes, microRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/${DATA_DIR}/cpdb_edges.json`),
-          fetch(`${API_BASE_URL}/${DATA_DIR}/cpdb_microenvs.json`),
+          fetch(`${dataUrl}/aux_data/cpdb_edges.json`),
+          fetch(`${dataUrl}/aux_data/cpdb_microenvs.json`),
         ]);
 
         if (!edgesRes.ok || !microRes.ok) {

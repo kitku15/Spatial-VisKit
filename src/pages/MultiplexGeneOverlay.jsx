@@ -107,10 +107,26 @@ export default function MultiplexGeneOverlay() {
     async function loadData() {
       setIsLoading(true);
       try {
+        const dataUrl = new URLSearchParams(window.location.search)
+          .get("data")
+          ?.replace(/\/$/, "");
+        const configB64 =
+          new URLSearchParams(window.location.search).get("config") || "";
+        if (!dataUrl) {
+          setIsLoading(false);
+          return;
+        }
+
         const [metaRes, geneRes, locRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/metadata`).catch(() => null),
-          fetch(`${API_BASE_URL}/api/genes`),
-          fetch(`${API_BASE_URL}/api/locations`),
+          fetch(
+            `${API_BASE_URL}/api/metadata?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+          ).catch(() => null),
+          fetch(
+            `${API_BASE_URL}/api/genes?data_url=${encodeURIComponent(dataUrl)}`,
+          ),
+          fetch(
+            `${API_BASE_URL}/api/locations?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+          ),
         ]);
 
         if (!geneRes.ok || !locRes.ok) {
@@ -177,11 +193,16 @@ export default function MultiplexGeneOverlay() {
   };
 
   useEffect(() => {
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    if (!dataUrl) return;
+
     channels.forEach((ch) => {
       if (ch.gene && !exprData[ch.gene.safe]) {
         setExprData((prev) => ({ ...prev, [ch.gene.safe]: { loading: true } }));
         fetch(
-          `${API_BASE_URL}/api/expression/${encodeURIComponent(ch.gene.safe)}`,
+          `${API_BASE_URL}/api/expression/${encodeURIComponent(ch.gene.safe)}?data_url=${encodeURIComponent(dataUrl)}`,
         )
           .then((r) => {
             if (!r.ok) throw new Error("Expression fetch failed");

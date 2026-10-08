@@ -104,7 +104,17 @@ export default function SpatialCCC({ datasetConfig }) {
   });
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/metadata`)
+    // For BYOD, we read the data URL from the browser's search parameters
+    const params = new URLSearchParams(window.location.search);
+    const dataUrl = params.get("data");
+
+    const configB64 =
+      new URLSearchParams(window.location.search).get("config") || "";
+    if (!dataUrl) return; // Wait until a data URL is provided
+
+    fetch(
+      `${API_BASE_URL}/api/metadata?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+    )
       .then((res) => {
         if (!res.ok) throw new Error("Metadata fetch failed");
         return res.json();
@@ -133,7 +143,16 @@ export default function SpatialCCC({ datasetConfig }) {
 
   useEffect(() => {
     if (!datasetConfig?.zarr_filename) return;
-    fetch(`${API_BASE_URL}/${zarrDir}/obs/.zattrs`)
+    const params = new URLSearchParams(window.location.search);
+    const dataUrl = params.get("data");
+
+    if (!dataUrl) return;
+
+    // Fetch directly from the user's remote cloud bucket!
+    // We completely bypass your backend here.
+    const remoteZattrsUrl = `${dataUrl.replace(/\/$/, "")}/${datasetConfig.zarr_filename}/obs/.zattrs`;
+
+    fetch(remoteZattrsUrl)
       .then((res) => res.json())
       .then((data) => {
         const columns = data["column-order"] || [];

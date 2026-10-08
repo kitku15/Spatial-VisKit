@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Vitessce } from "vitessce";
-import { API_BASE_URL, largeColorPalette, DATA_DIR } from "../../config/config";
+import { API_BASE_URL, largeColorPalette } from "../../config/config";
 
 const hexToRgb = (hex) => {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -27,18 +27,25 @@ export default function VitessceSpatialStats({
     [datasetConfig],
   );
   const spatialKey = datasetConfig?.spatial_key || "global";
-  const zarrDir = `data/${datasetConfig?.zarr_filename}`;
+
+  const dataUrl = new URLSearchParams(window.location.search)
+    .get("data")
+    ?.replace(/\/$/, "");
+  const zarrUrl = `${dataUrl}/${datasetConfig?.zarr_filename}`;
 
   const [obsData, setObsData] = useState(null);
 
   useEffect(() => {
+    if (!dataUrl) return;
+    const params = new URLSearchParams(window.location.search);
+    const configB64 = params.get("config") || "";
     Promise.all([
-      fetch(`${API_BASE_URL}/api/metadata`).then((res) =>
-        res.ok ? res.json() : Promise.reject(res),
-      ),
-      fetch(`${API_BASE_URL}/api/obs`).then((res) =>
-        res.ok ? res.json() : Promise.reject(res),
-      ),
+      fetch(
+        `${API_BASE_URL}/api/metadata?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+      ).then((res) => (res.ok ? res.json() : Promise.reject(res))),
+      fetch(
+        `${API_BASE_URL}/api/obs?data_url=${encodeURIComponent(dataUrl)}`,
+      ).then((res) => (res.ok ? res.json() : Promise.reject(res))),
     ])
       .then(([, obs]) => {
         setObsData(obs);
@@ -46,7 +53,7 @@ export default function VitessceSpatialStats({
       .catch((err) =>
         console.warn("Failed to load Spatial Stats metadata/obs:", err),
       );
-  }, []);
+  }, [dataUrl]);
 
   const internalColName = useMemo(() => {
     if (activeCategory === "MuSpAn ROI") return "muspan_region";
@@ -67,15 +74,15 @@ export default function VitessceSpatialStats({
   }, [obsData, internalColName, activeCategory]);
 
   const config = useMemo(() => {
-    if (clusterLabels.length === 0) return null;
+    if (clusterLabels.length === 0 || !dataUrl) return null;
 
     const spatialEmbeddingKey = `obsm/${spatialKey}`;
     const segmentationsFile =
       selectedSample === "All"
         ? selectedSlide === "All"
-          ? `${DATA_DIR}/segmentations/segmentations.json`
-          : `${DATA_DIR}/segmentations/segmentations_Slide_${selectedSlide}.json`
-        : `${DATA_DIR}/segmentations/segmentations_${selectedSample}.json`;
+          ? `${dataUrl}/aux_data/segmentations/segmentations.json`
+          : `${dataUrl}/aux_data/segmentations/segmentations_Slide_${selectedSlide}.json`
+        : `${dataUrl}/aux_data/segmentations/segmentations_${selectedSample}.json`;
 
     const obsSetColor = clusterLabels.map((label, i) => {
       if (activeCategory === "MuSpAn ROI") {
@@ -123,7 +130,7 @@ export default function VitessceSpatialStats({
     const files = [
       {
         fileType: "anndata-cells.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: {
           mappings: {
             spatial_view: { key: spatialEmbeddingKey, dims: [0, 1] },
@@ -133,25 +140,25 @@ export default function VitessceSpatialStats({
       },
       {
         fileType: "obsSets.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: sortedObsSets,
         coordinationValues: { obsType: "cell" },
       },
       {
         fileType: "obsFeatureMatrix.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: { path: "X" },
         coordinationValues: { obsType: "cell" },
       },
       {
         fileType: "obsLocations.anndata.zarr",
-        url: `${API_BASE_URL}/${zarrDir}/`,
+        url: `${zarrUrl}/`,
         options: { path: spatialEmbeddingKey },
         coordinationValues: { obsType: "cell" },
       },
       {
         fileType: "obsSegmentations.json",
-        url: `${API_BASE_URL}/${segmentationsFile}`,
+        url: segmentationsFile,
         coordinationValues: { obsType: "cell" },
       },
     ];
@@ -240,7 +247,8 @@ export default function VitessceSpatialStats({
     dynamicAnnotations,
     extraObsSets,
     spatialKey,
-    zarrDir,
+    dataUrl,
+    zarrUrl,
   ]);
 
   if (!config)

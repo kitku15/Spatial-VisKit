@@ -4,7 +4,7 @@ import ForceGraph2D from "react-force-graph-2d";
 import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
 import InfoModal from "../components/ui/InfoModal";
-import { themeColors, DATA_DIR, API_BASE_URL } from "../config/config";
+import { themeColors, API_BASE_URL } from "../config/config";
 
 const createPlotlyComponent =
   typeof factory === "function" ? factory : factory.default;
@@ -51,12 +51,16 @@ export default function GSEAExplorer() {
   useEffect(() => {
     async function fetchMetadata() {
       try {
-        const res = await fetch(
-          `${API_BASE_URL}/${DATA_DIR}/gsea/gsea_metadata.json`,
-        );
+        const dataUrl = new URLSearchParams(window.location.search)
+          .get("data")
+          ?.replace(/\/$/, "");
+        if (!dataUrl) return;
+
+        const res = await fetch(`${dataUrl}/aux_data/gsea/gsea_metadata.json`);
         if (!res.ok) throw new Error("GSEA metadata not found.");
         const data = await res.json();
         setMeta(data);
+        setErrorMsg(""); // Clear any previous errors
 
         if (data.celltypes?.length > 0) {
           const ct = data.celltypes[0];
@@ -70,6 +74,10 @@ export default function GSEAExplorer() {
         }
       } catch (err) {
         console.warn(err.message);
+        setErrorMsg(
+          "GSEA data is not available for this dataset. This usually means the DE Analysis module was skipped during pipeline execution.",
+        );
+        setMeta("EMPTY"); // Set to a specific string so the UI knows it finished trying to load
       }
     }
     fetchMetadata();
@@ -78,9 +86,13 @@ export default function GSEAExplorer() {
   // Try to load precomputed defaults initially
   useEffect(() => {
     if (!selectedCellType || !selectedComparison || !selectedDatabase) return;
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    if (!dataUrl) return;
 
     fetch(
-      `${API_BASE_URL}/${DATA_DIR}/gsea/precomputed/${selectedCellType}_${selectedComparison}_${selectedDatabase}.json`,
+      `${dataUrl}/aux_data/gsea/precomputed/${selectedCellType}_${selectedComparison}_${selectedDatabase}.json`,
     )
       .then((r) => {
         if (!r.ok) throw new Error("No default precomputed state found.");
@@ -104,6 +116,10 @@ export default function GSEAExplorer() {
 
   const runInteractiveGSEA = async () => {
     if (!selectedCellType || !selectedComparison || !selectedDatabase) return;
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    if (!dataUrl) return;
 
     setIsComputing(true);
     setErrorMsg("");
@@ -119,11 +135,14 @@ export default function GSEAExplorer() {
         nes_threshold: Number(nesThreshold),
       };
 
-      const res = await fetch(`${API_BASE_URL}/api/gsea`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await fetch(
+        `${API_BASE_URL}/api/gsea?data_url=${encodeURIComponent(dataUrl)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+      );
 
       if (!res.ok) throw new Error("GSEA computation failed on the backend.");
       const result = await res.json();
@@ -328,7 +347,11 @@ export default function GSEAExplorer() {
   return (
     <div className="p-6 flex flex-col gap-4 h-full bg-app overflow-y-auto">
       <div className="bg-panel p-4 border border-borderLight shadow-sm rounded flex flex-wrap gap-4 items-end">
-        {meta ? (
+        {meta === "EMPTY" ? (
+          <div className="w-full text-center text-danger font-bold p-4">
+            {errorMsg}
+          </div>
+        ) : meta ? (
           <>
             <label className="text-sm font-semibold flex flex-col gap-1">
               <span className="text-textMuted uppercase tracking-wide text-xs">

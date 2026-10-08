@@ -25,7 +25,16 @@ export default function CellTypeAnnotation({ datasetConfig }) {
 
   // Fetch all categorical columns just like CompositionAnalysis
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/obs`)
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    const configB64 =
+      new URLSearchParams(window.location.search).get("config") || "";
+    if (!dataUrl) return;
+
+    fetch(
+      `${API_BASE_URL}/api/obs?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+    )
       .then((res) => {
         if (!res.ok) throw new Error("Failed to fetch obs data");
         return res.json();
@@ -125,12 +134,18 @@ export default function CellTypeAnnotation({ datasetConfig }) {
         return nodeNameToIndex.get(name);
       };
 
+      const dataUrl = new URLSearchParams(window.location.search)
+        .get("data")
+        ?.replace(/\/$/, "");
+      const configB64 =
+        new URLSearchParams(window.location.search).get("config") || "";
+
       for (let i = 0; i < selectedCols.length - 1; i++) {
         const colA = selectedCols[i];
         const colB = selectedCols[i + 1];
 
         const response = await fetch(
-          `${API_BASE_URL}/api/sankey?col_a=${colA}&col_b=${colB}`,
+          `${API_BASE_URL}/api/sankey?col_a=${colA}&col_b=${colB}&data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
         );
         if (!response.ok)
           throw new Error(`Data not found for: ${colA} → ${colB}`);

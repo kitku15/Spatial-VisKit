@@ -2,12 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
-import {
-  largeColorPalette,
-  themeColors,
-  DATA_DIR,
-  API_BASE_URL,
-} from "../config/config";
+import { largeColorPalette, themeColors, API_BASE_URL } from "../config/config";
 import InfoModal from "../components/ui/InfoModal";
 import { tabInfo } from "../constants/infoHelper";
 
@@ -104,8 +99,15 @@ export default function DEAnalysis({ customColors = {} }) {
   useEffect(() => {
     async function initData() {
       try {
+        const dataUrl = new URLSearchParams(window.location.search)
+          .get("data")
+          ?.replace(/\/$/, "");
+        const configB64 =
+          new URLSearchParams(window.location.search).get("config") || "";
+        if (!dataUrl) return;
+
         const metaRes = await fetch(
-          `${API_BASE_URL}/${DATA_DIR}/de_analysis/de_metadata.json`,
+          `${dataUrl}/aux_data/de_analysis/de_metadata.json`,
         );
         if (!metaRes.ok) throw new Error("Metadata fetch failed");
         const meta = await metaRes.json();
@@ -115,8 +117,12 @@ export default function DEAnalysis({ customColors = {} }) {
         if (annos.length > 0) setSelectedAnnotation(annos[0]);
 
         const [obsRes, genesRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/obs`),
-          fetch(`${API_BASE_URL}/api/genes`),
+          fetch(
+            `${API_BASE_URL}/api/obs?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+          ),
+          fetch(
+            `${API_BASE_URL}/api/genes?data_url=${encodeURIComponent(dataUrl)}`,
+          ),
         ]);
 
         if (obsRes.ok) setClusterLabels(await obsRes.json());
@@ -130,9 +136,14 @@ export default function DEAnalysis({ customColors = {} }) {
 
   useEffect(() => {
     if (!selectedAnnotation) return;
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    if (!dataUrl) return;
+
     async function fetchTable() {
       const tableCsv = await d3.csv(
-        `${API_BASE_URL}/${DATA_DIR}/de_analysis/top_DEgenes_${selectedAnnotation}.csv`,
+        `${dataUrl}/aux_data/de_analysis/top_DEgenes_${selectedAnnotation}.csv`,
       );
       setTopGenesTable(tableCsv);
       if (tableCsv.length > 0) {
@@ -171,12 +182,17 @@ export default function DEAnalysis({ customColors = {} }) {
   useEffect(() => {
     if (!selectedAnnotation || !selectedCluster) return;
 
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    if (!dataUrl) return;
+
     const safeCluster = selectedCluster
       .replace(/[^\w\s-]/g, "")
       .replace(/\s+/g, "_");
 
     fetch(
-      `${API_BASE_URL}/${DATA_DIR}/de_analysis/${selectedAnnotation}_cluster_${safeCluster}.json`,
+      `${dataUrl}/aux_data/de_analysis/${selectedAnnotation}_cluster_${safeCluster}.json`,
     )
       .then((r) => {
         if (!r.ok) throw new Error("Volcano data not found");
@@ -187,8 +203,15 @@ export default function DEAnalysis({ customColors = {} }) {
   }, [selectedAnnotation, selectedCluster]);
 
   useEffect(() => {
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    if (!dataUrl) return;
+
     if (gene1) {
-      fetch(`${API_BASE_URL}/api/expression/${encodeURIComponent(gene1.safe)}`)
+      fetch(
+        `${API_BASE_URL}/api/expression/${encodeURIComponent(gene1.safe)}?data_url=${encodeURIComponent(dataUrl)}`,
+      )
         .then((r) => {
           if (!r.ok) throw new Error("Expression data fetch failed");
           return r.json();

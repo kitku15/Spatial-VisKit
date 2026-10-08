@@ -5,7 +5,6 @@ import * as d3 from "d3";
 import {
   themeColors,
   largeColorPalette,
-  DATA_DIR,
   DEFAULT_MORPH_METRIC,
   API_BASE_URL,
 } from "../config/config";
@@ -50,7 +49,16 @@ export default function SpatialStats({
   useEffect(() => {
     async function fetchMetadata() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/metadata`);
+        const dataUrl = new URLSearchParams(window.location.search)
+          .get("data")
+          ?.replace(/\/$/, "");
+        const configB64 =
+          new URLSearchParams(window.location.search).get("config") || "";
+        if (!dataUrl) return;
+
+        const res = await fetch(
+          `${API_BASE_URL}/api/metadata?data_url=${encodeURIComponent(dataUrl)}&config_b64=${configB64}`,
+        );
         if (!res.ok) return;
         const data = await res.json();
         setHierarchy(data.hierarchy);
@@ -80,7 +88,12 @@ export default function SpatialStats({
 
   useEffect(() => {
     if (!selectedSample || selectedSample === "All") return;
-    const basePath = `${API_BASE_URL}/${DATA_DIR}/spatial_stats/${selectedSample}`;
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    if (!dataUrl) return;
+
+    const basePath = `${dataUrl}/aux_data/spatial_stats/${selectedSample}`;
 
     fetch(`${basePath}/nhood_enrichment_${selectedSample}.json`)
       .then((r) => (r.ok ? r.json() : null))

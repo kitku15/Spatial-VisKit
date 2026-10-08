@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import Plotly from "plotly.js-dist-min";
 import factory from "react-plotly.js/factory";
 import * as d3 from "d3";
-import { themeColors, DATA_DIR, API_BASE_URL } from "../config/config";
+import { themeColors } from "../config/config";
 import InfoModal from "../components/ui/InfoModal";
 import { tabInfo } from "../constants/infoHelper";
 
@@ -23,7 +23,12 @@ export default function ConditionsCausal() {
 
   // 1. Fetch Metadata mapping on mount
   useEffect(() => {
-    fetch(`${API_BASE_URL}/${DATA_DIR}/causal_ccc/causal_metadata.json`)
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    if (!dataUrl) return;
+
+    fetch(`${dataUrl}/aux_data/causal_ccc/causal_metadata.json`)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
         return res.json();
@@ -99,8 +104,13 @@ export default function ConditionsCausal() {
       (p) => p.source === effectiveSource && p.target === effectiveTarget,
     );
 
+    const dataUrl = new URLSearchParams(window.location.search)
+      .get("data")
+      ?.replace(/\/$/, "");
+    if (!dataUrl) return;
+
     if (pairInfo && pairInfo.file) {
-      fetch(`${API_BASE_URL}/${DATA_DIR}/causal_ccc/${pairInfo.file}`)
+      fetch(`${dataUrl}/aux_data/causal_ccc/${pairInfo.file}`)
         .then((res) => {
           if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
           return res.json();
