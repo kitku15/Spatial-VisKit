@@ -102,7 +102,7 @@ export default function Layout({
         >
           <div className="p-4 bg-borderLight flex justify-center border-b border-borderMain shrink-0">
             <img
-              src="/logo_hor.svg"
+              src="/assets/logo_hor.svg"
               alt="Project Logo"
               className="h-10 w-auto"
             />
