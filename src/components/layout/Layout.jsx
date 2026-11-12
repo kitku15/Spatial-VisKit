@@ -23,6 +23,10 @@ const analysisLinks = [
     to: `/tf${window.location.search}`,
     label: "Transcription Factor Enrichment",
   },
+  {
+    to: `/signatures${window.location.search}`,
+    label: "Gene Signature Scoring",
+  },
   { to: `/ccc${window.location.search}`, label: "Cell-Cell Communication" },
   { to: `/spatial-ccc${window.location.search}`, label: "Spatial CCC" },
   {

@@ -87,8 +87,11 @@ export default function TranscriptionFactor({
         if (!res.ok) return;
         const data = await res.json();
         setHeatmapData(data);
-        setAllCellTypes(data.y);
-        setSelectedCellTypes(data.y);
+
+        // Use a Set to guarantee unique keys for the cell type buttons
+        const uniqueCellTypes = Array.from(new Set(data.y));
+        setAllCellTypes(uniqueCellTypes);
+        setSelectedCellTypes(uniqueCellTypes);
       } catch (err) {
         console.warn("Could not load tf_heatmap_data.json", err);
       }

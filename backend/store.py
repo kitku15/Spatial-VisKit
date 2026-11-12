@@ -5,6 +5,9 @@ import requests
 import pandas as pd
 import zarr
 import fsspec
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -13,7 +16,11 @@ logging.basicConfig(level=logging.INFO)
 class DataStore:
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url.rstrip("/")
-        self.config_url = f"{self.base_url}/dataset_config.json"
+
+        import time
+
+        # Append timestamp to bust Cloudflare Edge Caches
+        self.config_url = f"{self.base_url}/dataset_config.json?t={int(time.time())}"
 
         # Zarr & Data State
         self.zarr_url: str | None = None
@@ -66,12 +73,14 @@ class DataStore:
 
     def _load_config_json(self) -> None:
         try:
-            resp = requests.get(self.config_url)
+            resp = requests.get(self.config_url, verify=False)
             if resp.status_code == 200:
                 config = resp.json()
                 self.zarr_filename_actual = config.get("zarr_filename", "")
                 self.tf_zarr_filename = config.get("tf_zarr_filename", "")
                 self.slide_col = config.get("slide_col")
+
+                # THESE MUST BE OUTSIDE THE ELSE BLOCK!
                 self.sample_col = config.get("sample_col")
                 self.spatial_key = config.get("spatial_key")
                 self.vitessce_dot_size = config.get("vitessce_dot_size", 2)
@@ -86,6 +95,10 @@ class DataStore:
                 self.available_embeddings = config.get(
                     "available_embeddings",
                     [{"name": "UMAP", "path": "obsm/X_umap"}],
+                )
+            else:
+                logger.error(
+                    f"Cloudflare returned HTTP {resp.status_code} for config: {resp.text}"
                 )
         except Exception as e:
             logger.warning(f"Failed to parse remote dataset_config.json: {e}")

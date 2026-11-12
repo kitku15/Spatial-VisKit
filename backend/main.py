@@ -15,12 +15,15 @@ import json
 import asyncio
 import base64
 import requests
+import urllib3
 from concurrent.futures import ProcessPoolExecutor
 from cachetools import TTLCache
 import gseapy as gp
 
 from store import store_manager
 from schemas import ExportRequest, GSEARequest
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Cache up to 50 unique queries for 1 hour to prevent redundant calculations
 gsea_cache = TTLCache(maxsize=50, ttl=3600)
@@ -38,7 +41,7 @@ def _run_gsea_task(params_dict, data_url):
     try:
         # Fetch file via standard HTTP request, load into memory buffer, then read.
         # This prevents Cloudflare R2 from blocking Pandas' native fsspec HTTP calls.
-        resp = requests.get(pq_path)
+        resp = requests.get(pq_path, verify=False)
         if resp.status_code != 200:
             raise ValueError(f"HTTP {resp.status_code} - File missing or blocked")
 
@@ -208,7 +211,12 @@ def get_metadata(data_url: str, config_b64: str = None):
 @app.get("/api/genes")
 def get_genes(data_url: str):
     store = _get_store(data_url)
-    return [{"original": str(g), "safe": str(g)} for g in store.var_df.index]
+    res = []
+    has_type = "feature_type" in store.var_df.columns
+    for g in store.var_df.index:
+        ftype = store.var_df.loc[g, "feature_type"] if has_type else "Gene"
+        res.append({"original": str(g), "safe": str(g), "type": str(ftype)})
+    return res
 
 
 @app.get("/api/expression/{gene_name:path}")

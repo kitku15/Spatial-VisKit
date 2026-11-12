@@ -23,6 +23,7 @@ import ConditionsDE from "./pages/ConditionsDE";
 import GSEAExplorer from "./pages/GSEAExplorer";
 import SpatialCCC from "./pages/SpatialCCC";
 import ConditionsCausal from "./pages/ConditionsCausal";
+import SignatureExplorer from "./pages/SignatureExplorer";
 import CompositionAnalysis from "./pages/CompositionAnalysis";
 import ColorSettings from "./pages/ColorSettings";
 import DataExport from "./pages/DataExport";
@@ -148,6 +149,25 @@ export default function App() {
               Load Dataset
             </button>
           </form>
+
+          <div className="mt-6 flex items-center justify-center gap-4">
+            <div className="h-px bg-stroke flex-1"></div>
+            <span className="text-xs text-selpanel font-bold uppercase tracking-wider">
+              Or
+            </span>
+            <div className="h-px bg-stroke flex-1"></div>
+          </div>
+
+          <button
+            onClick={() => {
+              const sampleUrl =
+                "https://pub-e25e16386a87449cbfc5fb4e20e977f0.r2.dev/data_pCosMx_new";
+              window.location.href = `/?data=${encodeURIComponent(sampleUrl)}&mode=full&title=${encodeURIComponent("Sample Dataset (CosMx)")}`;
+            }}
+            className="w-full mt-6 bg-background border-2 border-primary text-primary font-bold py-3 px-4 rounded hover:bg-primary hover:text-white transition-colors shadow-sm"
+          >
+            Explore Sample Dataset
+          </button>
         </div>
       </div>
     );
@@ -321,6 +341,22 @@ export default function App() {
               />
               <Route path="/conditions-de" element={<ConditionsDE />} />
               <Route path="/gsea" element={<GSEAExplorer />} />
+              <Route
+                path="/signatures"
+                element={
+                  isReady ? (
+                    <SignatureExplorer
+                      n={meta.appliedN}
+                      r={meta.appliedR}
+                      embedding={meta.appliedEmbedding}
+                      customColors={customColors}
+                      datasetConfig={meta.datasetConfig}
+                    />
+                  ) : (
+                    <div className="p-6">Loading data from Zarr...</div>
+                  )
+                }
+              />
               <Route path="/conditions-causal" element={<ConditionsCausal />} />
             </>
           )}

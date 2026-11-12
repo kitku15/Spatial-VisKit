@@ -35,15 +35,10 @@ export default function VitessceTF({
     .get("data")
     ?.replace(/\/$/, "");
 
-  // Safe fallback just in case the backend variable is missing
-  const tfFallback = datasetConfig?.zarr_filename?.replace(
-    "_web.zarr",
-    "_tf_web.zarr",
-  );
   const zarrUrl = `${dataUrl}/${datasetConfig?.zarr_filename}`;
-  const tfZarrUrl = `${dataUrl}/${datasetConfig?.tf_zarr_filename || tfFallback}`;
 
   const [obsData, setObsData] = useState(null);
+  const [tfList, setTfList] = useState(null);
 
   useEffect(() => {
     if (!dataUrl) return;
@@ -56,11 +51,21 @@ export default function VitessceTF({
       fetch(
         `${API_BASE_URL}/api/obs?data_url=${encodeURIComponent(dataUrl)}`,
       ).then((res) => (res.ok ? res.json() : Promise.reject(res))),
+      fetch(
+        `${API_BASE_URL}/api/genes?data_url=${encodeURIComponent(dataUrl)}`,
+      ).then((res) => (res.ok ? res.json() : Promise.reject(res))),
     ])
-      .then(([, obs]) => {
+      .then(([, obs, genes]) => {
         setObsData(obs);
+        // Extract only the TFs from the unified matrix to filter the list widget
+        const tfs = genes
+          .filter((g) => g.type === "TF" || g.original.startsWith("TF_"))
+          .map((g) => g.original);
+        setTfList(tfs);
       })
-      .catch((err) => console.warn("Failed to load TF metadata/obs:", err));
+      .catch((err) =>
+        console.warn("Failed to load TF metadata/obs/genes:", err),
+      );
   }, [dataUrl]);
 
   const internalColName = useMemo(() => {
@@ -82,7 +87,7 @@ export default function VitessceTF({
   }, [obsData, internalColName, activeCategory]);
 
   const config = useMemo(() => {
-    if (clusterLabels.length === 0 || !datasetConfig || !dataUrl) return null;
+    if (!datasetConfig || !dataUrl || !obsData || !tfList) return null;
 
     const segmentationsFile =
       selectedSample !== "All"
@@ -91,26 +96,29 @@ export default function VitessceTF({
           ? `${dataUrl}/aux_data/segmentations/segmentations_Slide_${selectedSlide}.json`
           : `${dataUrl}/aux_data/segmentations/segmentations.json`;
 
-    const obsSetColor = clusterLabels.map((label, i) => {
-      if (activeCategory === "MuSpAn ROI") {
-        if (label === "In ROI")
-          return { path: [activeCategory, label], color: [255, 215, 0] };
-        if (label === "Outside ROI")
-          return { path: [activeCategory, label], color: [50, 50, 50] };
-      }
-      return {
-        path: [activeCategory, label],
-        color: hexToRgb(
-          customColors[label] ||
-            largeColorPalette[i % largeColorPalette.length],
-        ),
-      };
-    });
+    const obsSetColor =
+      clusterLabels.length > 0
+        ? clusterLabels.map((label, i) => {
+            if (activeCategory === "MuSpAn ROI") {
+              if (label === "In ROI")
+                return { path: [activeCategory, label], color: [255, 215, 0] };
+              if (label === "Outside ROI")
+                return { path: [activeCategory, label], color: [50, 50, 50] };
+            }
+            return {
+              path: [activeCategory, label],
+              color: hexToRgb(
+                customColors[label] ||
+                  largeColorPalette[i % largeColorPalette.length],
+              ),
+            };
+          })
+        : null;
 
-    const obsSetSelection = clusterLabels.map((label) => [
-      activeCategory,
-      label,
-    ]);
+    const obsSetSelection =
+      clusterLabels.length > 0
+        ? clusterLabels.map((label) => [activeCategory, label])
+        : null;
 
     const allObsSets = [
       ...dynamicAnnotations.map((ann) => {
@@ -170,10 +178,10 @@ export default function VitessceTF({
         url: segmentationsFile,
         coordinationValues: { obsType: "cell" },
       },
-      // 6. TF Matrix from TF Zarr
+      // 6. TF Matrix from Main Zarr (Unified)
       {
         fileType: "obsFeatureMatrix.anndata.zarr",
-        url: `${tfZarrUrl}/`,
+        url: `${zarrUrl}/`,
         options: { path: "X" },
         coordinationValues: { obsType: "cell" },
       },
@@ -195,8 +203,6 @@ export default function VitessceTF({
       embeddingObsRadiusMode: { RM1: "manual" },
       embeddingObsRadius: { R1: dotSize },
       featureValueColormap: { CM1: "plasma" },
-      obsSetColor: { OSC1: obsSetColor },
-      obsSetSelection: { OSS1: obsSetSelection },
 
       // Tells the Left Panel to color by Labels, and the Right Panel to color by TFs
       obsColorEncoding: {
@@ -222,7 +228,12 @@ export default function VitessceTF({
               ? [[slideSetName, selectedSlide]]
               : null,
       },
+      featureFilter: { FF1: tfList }, // Tell Vitessce to hide everything but TFs
     };
+
+    if (obsSetColor) coordinationSpace.obsSetColor = { OSC1: obsSetColor };
+    if (obsSetSelection)
+      coordinationSpace.obsSetSelection = { OSS1: obsSetSelection };
 
     const sharedScopes = {
       embeddingType: "ET_MAIN",
@@ -273,10 +284,13 @@ export default function VitessceTF({
           h: 6,
           props: { title: "Cell Labels" },
         },
-        // Top Right: TFs Search List
+        // Top Right: TFs Search List (Filtered to only show TFs!)
         {
           component: "featureList",
-          coordinationScopes: { obsColorEncoding: "OCE_TF" },
+          coordinationScopes: {
+            obsColorEncoding: "OCE_TF",
+            featureFilter: "FF1",
+          },
           x: 9,
           y: 0,
           w: 3,
@@ -323,11 +337,12 @@ export default function VitessceTF({
     spatialKey,
     dataUrl,
     zarrUrl,
-    tfZarrUrl,
     customColors,
     dotSize,
     dynamicAnnotations,
     extraObsSets,
+    tfList,
+    obsData,
   ]);
 
   if (!config)
